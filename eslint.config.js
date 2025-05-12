@@ -1,8 +1,16 @@
+<<<<<<< HEAD
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
+=======
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
+>>>>>>> ef9de5f (added most of the frontend part)
 
 export default tseslint.config(
   { ignores: ['dist'] },
@@ -24,5 +32,10 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
+<<<<<<< HEAD
   },
 )
+=======
+  }
+);
+>>>>>>> ef9de5f (added most of the frontend part)
