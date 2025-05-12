@@ -22,7 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-<<<<<<< HEAD
-=======
+
 .env
->>>>>>> ef9de5f (added most of the frontend part)
