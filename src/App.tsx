@@ -1,33 +1,3 @@
-<<<<<<< HEAD
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import CallbackPage from './pages/CallbackPage';
-import HomePage from './pages/HomePage';
-import { SuiClientProvider } from './context/SuiClientProvider'; // We'll create this
-import { AccountProvider } from './context/AccountProvider'; // We'll create this
-import ProtectedRoute from './components/ProtectedRoute';
-
-const App = () => (
-  <SuiClientProvider>
-    <AccountProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/callback" element={<CallbackPage />} />
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </AccountProvider>
-  </SuiClientProvider>
-);
-=======
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
@@ -49,25 +19,20 @@ function App() {
   // Initialize debugger on app start
   useEffect(() => {
     setupDebugger();
-    
     // Set up session monitoring
     const cleanupMonitoring = setupSessionMonitoring();
-    
     // Add a periodic health check to ensure session persists
     const healthCheckInterval = setInterval(() => {
       // Touch the session to keep it active
       touchSession();
-      
       // Check if we have basic session information
       const hasSession = localStorage.getItem('zklogin-jwt') && 
                          localStorage.getItem('ephemeralSeed') && 
                          localStorage.getItem('user');
-      
       // If we're in development mode, log session health
       if (import.meta.env.DEV) {
         console.log(`Session health check: ${hasSession ? 'Healthy' : 'Unhealthy'}`);
       }
-      
       // Keep alive - just accessing localStorage helps ensure the session state stays in memory
       if (hasSession) {
         try {
@@ -82,7 +47,6 @@ function App() {
         }
       }
     }, 60000); // Check every minute
-    
     return () => {
       clearInterval(healthCheckInterval);
       cleanupMonitoring();
@@ -162,6 +126,5 @@ function App() {
     </UserProvider>
   );
 }
->>>>>>> ef9de5f (added most of the frontend part)
 
 export default App;
