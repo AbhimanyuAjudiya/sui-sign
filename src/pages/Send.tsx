@@ -48,6 +48,7 @@ const Send: React.FC = () => {
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isPublic, setIsPublic] = useState(false);
+  const [expiryDate, setExpiryDate] = useState<string>('');
   
   // States for signers (recipients)
   const [signers, setSigners] = useState<Signer[]>([{ 
@@ -247,9 +248,31 @@ const Send: React.FC = () => {
       if (!file) {
         errors.file = 'Please upload a document';
       }
+      
+      if (!expiryDate) {
+        errors.expiryDate = 'Please select an expiry date';
+      } else {
+        const selectedDate = new Date(expiryDate);
+        const today = new Date();
+        
+        if (selectedDate <= today) {
+          errors.expiryDate = 'Expiry date must be in the future';
+        }
+      }
     } else {
       if (!selectedAgreement) {
         errors.agreement = 'Please select an agreement';
+      }
+      
+      if (!expiryDate) {
+        errors.expiryDate = 'Please select an expiry date';
+      } else {
+        const selectedDate = new Date(expiryDate);
+        const today = new Date();
+        
+        if (selectedDate <= today) {
+          errors.expiryDate = 'Expiry date must be in the future';
+        }
       }
     }
     
@@ -285,7 +308,8 @@ const Send: React.FC = () => {
         title,
         description,
         fileHash,
-        user.address
+        user.address,
+        expiryDate
       );
       
       // Add signers and signature areas
@@ -327,7 +351,8 @@ const Send: React.FC = () => {
         const success = await sendAgreement(
           selectedAgreement.id,
           recipientAddress,
-          user.address
+          user.address,
+          expiryDate
         );
         
         if (!success) {
@@ -474,6 +499,25 @@ const Send: React.FC = () => {
                         error={validationErrors.description}
                         required
                       />
+                    </div>
+                    
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Expiry Date <span className="text-error-600">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                        className={`w-full px-3 py-2 border ${
+                          validationErrors.expiryDate ? 'border-error-300' : 'border-gray-300'
+                        } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
+                        min={new Date().toISOString().split('T')[0]} // Set minimum date to today
+                        required
+                      />
+                      {validationErrors.expiryDate && (
+                        <p className="mt-1 text-sm text-error-600">{validationErrors.expiryDate}</p>
+                      )}
                     </div>
                     
                     <div className="mb-4">

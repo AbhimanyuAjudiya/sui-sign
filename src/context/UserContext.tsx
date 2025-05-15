@@ -51,6 +51,13 @@ const UserContext = createContext<UserContextType>({
 
 export const useUser = () => useContext(UserContext);
 
+// Make the user context globally available for direct access in non-React code
+declare global {
+  interface Window {
+    __userContext?: UserContextType;
+  }
+}
+
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Set up debugger
   useEffect(() => {
@@ -123,6 +130,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
   
+  // Create the context value
+  const contextValue = {
+    user,
+    isAuthenticated: !!user?.isAuthenticated,
+    isLoading,
+    zkLoginAccount,
+    setZkLoginAccount,
+    ephemeralKeyPair,
+    setEphemeralKeyPair,
+    userSalt,
+    setUserSalt,
+    jwt,
+    setJwt,
+    randomness,
+    setRandomness,
+    login,
+    logout,
+  };
+  
+  // Store context in window object for non-React code to access
+  useEffect(() => {
+    window.__userContext = contextValue;
+    return () => {
+      window.__userContext = undefined;
+    };
+  }, [contextValue]);
+
   // Update user when zkLoginAccount changes
   useEffect(() => {
     if (zkLoginAccount) {
@@ -270,28 +304,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <UserContext.Provider 
-      value={{
-        // User data
-        user,
-        isAuthenticated: !!user?.isAuthenticated,
-        isLoading,
-        
-        // zkLogin state
-        zkLoginAccount,
-        setZkLoginAccount,
-        ephemeralKeyPair,
-        setEphemeralKeyPair,
-        userSalt,
-        setUserSalt,
-        jwt,
-        setJwt,
-        randomness,
-        setRandomness,
-        
-        // Auth actions
-        login,
-        logout,
-      }}
+      value={contextValue}
     >
       {children}
     </UserContext.Provider>

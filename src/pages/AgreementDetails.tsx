@@ -5,7 +5,8 @@ import PageContainer from '../components/Layout/PageContainer';
 import Button from '../components/ui/Button';
 import { Agreement, AgreementStatus } from '../types';
 import { useUser } from '../context/UserContext';
-import { fetchAgreementById } from '../utils/suiClient';
+import { fetchAgreementById, signAgreement } from '../utils/suiClient';
+import { downloadDocument, getDocumentDataUrl } from '../utils/documentUtils';
 
 const AgreementDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +16,8 @@ const AgreementDetails: React.FC = () => {
   const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [documentDataUrl, setDocumentDataUrl] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   useEffect(() => {
     if (!id) {
@@ -25,17 +28,42 @@ const AgreementDetails: React.FC = () => {
     const loadAgreement = async () => {
       try {
         setIsLoading(true);
+        setError(null); // Clear any existing errors when loading
+        
+        console.log('Fetching agreement:', id);
         const agreementData = await fetchAgreementById(id);
         
         if (!agreementData) {
+          console.error('Agreement not found with ID:', id);
           setError('Agreement not found.');
           return;
         }
         
+        console.log('Agreement data loaded:', agreementData);
         setAgreement(agreementData);
+        
+        // Try to load the document preview
+        if (agreementData.fileHash) {
+          try {
+            console.log('Loading document preview for hash:', agreementData.fileHash);
+            const dataUrl = await getDocumentDataUrl(agreementData.fileHash);
+            
+            if (dataUrl) {
+              console.log('Document preview loaded successfully');
+              setDocumentDataUrl(dataUrl);
+            } else {
+              console.warn('Empty data URL returned for document preview');
+            }
+          } catch (err) {
+            console.error('Error loading document preview:', err);
+            // Don't set an error here, just show fallback UI
+          }
+        } else {
+          console.warn('No fileHash available for document preview');
+        }
       } catch (error) {
         console.error('Error fetching agreement:', error);
-        setError('Failed to load agreement.');
+        setError('Failed to load agreement. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -44,10 +72,58 @@ const AgreementDetails: React.FC = () => {
     loadAgreement();
   }, [id, navigate]);
 
+  // Handle document download
+  const handleDownload = async () => {
+    if (!agreement) return;
+    
+    try {
+      setIsDownloading(true);
+      
+      if (!agreement.fileHash) {
+        throw new Error('No document file exists for this agreement');
+      }
+      
+      const fileName = agreement.fileName || `agreement-${agreement.id}.pdf`;
+      console.log(`Attempting to download document: ${fileName} (${agreement.fileHash})`);
+      
+      await downloadDocument(
+        agreement.fileHash, 
+        fileName
+      );
+      
+      // Show success message (could use a toast notification in a real app)
+      console.log('Document downloaded successfully');
+    } catch (error) {
+      console.error('Download error:', error);
+      // Show friendly error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Unknown error occurred while downloading';
+      
+      alert(`Failed to download document: ${errorMessage}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const getStatusBadge = () => {
     if (!agreement) return null;
     
     let color, text, icon;
+    
+    // Check if the agreement is expired first
+    const isExpired = agreement.expiresAt && agreement.expiresAt < Date.now();
+    
+    if (isExpired) {
+      color = 'bg-error-100 text-error-800';
+      text = 'Expired';
+      icon = <Clock size={14} className="mr-1" />;
+      return (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
+          {icon}{text}
+        </span>
+      );
+    }
     
     switch (agreement.status) {
       case AgreementStatus.DRAFT:
@@ -84,6 +160,11 @@ const AgreementDetails: React.FC = () => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+  
+  const isAgreementExpired = (agreement: Agreement): boolean => {
+    if (!agreement.expiresAt) return false;
+    return agreement.expiresAt < Date.now();
   };
 
   if (isLoading) {
@@ -146,19 +227,38 @@ const AgreementDetails: React.FC = () => {
                 variant="outline"
                 size="sm"
                 icon={<Download size={16} />}
-                onClick={() => window.open(agreement.fileUrl, '_blank')}
+                onClick={handleDownload}
+                disabled={isDownloading}
               >
-                Download
+                {isDownloading ? 'Downloading...' : 'Download'}
               </Button>
             </div>
             <div className="border border-gray-200 rounded-md bg-white p-4 mb-2 h-64 flex items-center justify-center">
-              <div className="text-center">
-                <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">Document preview would appear here</p>
-              </div>
+              {documentDataUrl ? (
+                <iframe
+                  src={documentDataUrl}
+                  title="Document Preview"
+                  className="w-full h-full"
+                  onError={(e) => {
+                    console.error('Error loading document in iframe:', e);
+                    // Clear the data URL to show the fallback UI
+                    setDocumentDataUrl(null);
+                  }}
+                />
+              ) : (
+                <div className="text-center">
+                  <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">Document preview not available</p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {agreement.fileHash ? 
+                      'There was an issue loading the preview, but you can still download the document' :
+                      'No document has been uploaded for this agreement'}
+                  </p>
+                </div>
+              )}
             </div>
             <p className="text-xs text-gray-500">
-              Document ID: {agreement.fileHash}
+              Document ID: {agreement.fileHash || 'Not available'}
             </p>
           </div>
           
@@ -221,6 +321,21 @@ const AgreementDetails: React.FC = () => {
                   <dt className="text-sm font-medium text-gray-500">Visibility</dt>
                   <dd className="mt-1 text-sm text-gray-900">
                     {agreement.isPublic ? 'Public' : 'Private'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Expires On</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {agreement.expiresAt ? (
+                      <>
+                        {formatDate(agreement.expiresAt)}
+                        {agreement.expiresAt < Date.now() && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-error-100 text-error-800">
+                            Expired
+                          </span>
+                        )}
+                      </>
+                    ) : 'No expiration date'}
                   </dd>
                 </div>
               </dl>

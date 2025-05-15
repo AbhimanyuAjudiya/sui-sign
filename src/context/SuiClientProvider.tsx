@@ -9,7 +9,7 @@ interface SuiClientContextType {
 const SuiClientContext = createContext<SuiClientContextType | null>(null);
 
 export const SuiClientProvider = ({ children }: { children: React.ReactNode }) => {
-  const rpcUrl = import.meta.env.VITE_SUI_FULLNODE_RPC_URL || getFullnodeUrl('devnet');
+  const rpcUrl = import.meta.env.VITE_SUI_FULLNODE_RPC_URL || getFullnodeUrl('testnet');
   const client = useMemo(() => new SuiClient({ url: rpcUrl }), [rpcUrl]);
 
   return (

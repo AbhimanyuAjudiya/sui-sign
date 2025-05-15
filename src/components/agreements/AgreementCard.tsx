@@ -1,6 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle, FileText, Send, AlertCircle } from 'lucide-react';
+// Removed Clock from imports as it was unused
+import { CheckCircle, FileText, Send, AlertCircle, XCircle, CalendarX } from 'lucide-react';
+// Removed SignerArea from imports as it was unused in this component directly
 import { Agreement, AgreementStatus } from '../../types';
 import { motion } from 'framer-motion';
 
@@ -13,8 +15,12 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ agreement, userAddress })
   const navigate = useNavigate();
   
   const isCreator = agreement.creator === userAddress;
-  const isRecipient = agreement.recipient === userAddress;
+  // isSigner was declared but not used, removed. currentUserSignerArea is used instead for logic.
+  // const isSigner = agreement.signer_areas?.some(area => area.signer === userAddress);
   
+  // Find the specific area for the current user if they are a signer
+  const currentUserSignerArea = agreement.signer_areas?.find(area => area.signer === userAddress);
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
@@ -26,13 +32,17 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ agreement, userAddress })
   const getStatusIcon = () => {
     switch (agreement.status) {
       case AgreementStatus.DRAFT:
-        return <Clock className="h-5 w-5 text-gray-500" />;
+        return <FileText className="h-5 w-5 text-gray-500" />; // Changed from Clock for Draft
       case AgreementStatus.PENDING:
-        return <Send className="h-5 w-5 text-warning-500" />;
+        return <Send className="h-5 w-5 text-yellow-500" />; // Ensure warning-500 is defined or use a standard color
       case AgreementStatus.SIGNED:
-        return <CheckCircle className="h-5 w-5 text-success-500" />;
+        return <CheckCircle className="h-5 w-5 text-green-500" />; // Ensure success-500 is defined
+      case AgreementStatus.REJECTED:
+        return <XCircle className="h-5 w-5 text-red-500" />; // Ensure error-500 is defined
+      case AgreementStatus.EXPIRED:
+        return <CalendarX className="h-5 w-5 text-gray-500" />;
       default:
-        return <AlertCircle className="h-5 w-5 text-error-500" />;
+        return <AlertCircle className="h-5 w-5 text-red-500" />;
     }
   };
   
@@ -42,21 +52,43 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ agreement, userAddress })
         return 'Draft';
       case AgreementStatus.PENDING:
         if (isCreator) {
-          return 'Waiting for signature';
-        } else {
-          return 'Awaiting your signature';
+          return 'Pending Signatures';
+        } else if (currentUserSignerArea && !currentUserSignerArea.signed && !currentUserSignerArea.rejected) {
+          return 'Awaiting Your Signature';
+        } else if (currentUserSignerArea && currentUserSignerArea.signed) {
+          return 'You Signed - Pending Others';
+        } else if (currentUserSignerArea && currentUserSignerArea.rejected) {
+          return 'You Rejected - Pending Others';
         }
+        return 'Pending Signatures';
       case AgreementStatus.SIGNED:
         return 'Signed';
+      case AgreementStatus.REJECTED:
+        // Check if the current user was the one who rejected
+        if (currentUserSignerArea?.rejected) {
+            return 'You Rejected This Agreement';
+        }
+        // Find if any signer rejected
+        const rejecter = agreement.signer_areas?.find(area => area.rejected);
+        if (rejecter) {
+            // In a real app, you might want to show which signer rejected if known and public
+            return 'Rejected by a Signer';
+        }
+        return 'Rejected';
+      case AgreementStatus.EXPIRED:
+        return 'Expired';
       default:
-        return 'Unknown';
+        const exhaustiveCheck: never = agreement.status;
+        return `Unknown Status: ${exhaustiveCheck}`;
     }
   };
   
   const handleClick = () => {
-    if (agreement.status === AgreementStatus.PENDING && isRecipient) {
+    // If the user is a signer, the agreement is pending, and they haven't signed or rejected yet
+    if (agreement.status === AgreementStatus.PENDING && currentUserSignerArea && !currentUserSignerArea.signed && !currentUserSignerArea.rejected) {
       navigate(`/sign/${agreement.id}`);
     } else {
+      // For all other cases, navigate to the agreement details page
       navigate(`/agreement/${agreement.id}`);
     }
   };

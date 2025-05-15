@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useUser } from '../context/UserContext';
 import AddressDisplay from '../components/common/AddressDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Shield, User as UserIcon } from 'lucide-react';
+import Button from '../components/ui/Button';
+import { Shield, User as UserIcon, ExternalLink } from 'lucide-react';
 
 /**
  * User profile page displaying user details and Sui blockchain information
@@ -135,6 +136,19 @@ const Profile: React.FC = () => {
                     {networkLabel}
                   </span>
                 </div>
+                
+                {/* Faucet Button - Only show on testnet or devnet */}
+                {(networkLabel === 'Sui Testnet' || networkLabel === 'Sui Devnet') && (
+                  <div className="mt-4">
+                    <Button
+                      onClick={() => window.open(`https://faucet.sui.io/?address=${user.address}`, '_blank')}
+                      fullWidth
+                      icon={<ExternalLink className="h-4 w-4 mr-2" />}
+                    >
+                      Get Testnet Tokens
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

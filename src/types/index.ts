@@ -1,30 +1,45 @@
 // Agreement status constants
 export enum AgreementStatus {
-  DRAFT = 0,
-  PENDING = 1, 
-  SIGNED = 2
+  DRAFT = 0, // Matches 'Draft' in Move enum
+  PENDING = 1, // Matches 'Pending'
+  SIGNED = 2, // Matches 'Signed'
+  EXPIRED = 3, // Matches 'Expired'
+  REJECTED = 4, // Matches 'Rejected'
+}
+
+// SignerArea type for signature areas in documents
+export interface SignerArea {
+  signer: string; // address
+  page: number; // u64
+  x: number; // u64
+  y: number; // u64
+  width: number; // u64
+  height: number; // u64
+  inputType: number; // u8, 0 = text, 1 = image
+  value: number[]; // vector<u8>, signature hash or value
+  signed: boolean;
+  rejected: boolean;
 }
 
 // Agreement type from the smart contract
 export interface Agreement {
-  id: string;
-  title: string;
-  description: string;
-  fileHash: string;
-  fileName?: string;
-  fileUrl?: string;
-  creator: string;
-  recipient?: string; 
-  signedByCreator: boolean;
-  signedByRecipient: boolean;
-  status: AgreementStatus;
-  createdAt: number;
+  id: string; // UID as string
+  creator: string; // address
+  title: string; // vector<u8> to string
+  description: string; // vector<u8> to string
+  fileHash: string; // vector<u8> to string (hex or base64)
+  fileUrl: string; // vector<u8> to string
+  signer_areas: SignerArea[]; // vector<SignerArea>
+  status: AgreementStatus; // Corresponds to the Status enum
+  createdAt: number; // u64 timestamp
   isPublic: boolean;
-  signature?: {
-    dataUrl: string;
-    position: { x: number; y: number };
-    page: number;
-  };
+  feePaid: boolean;
+  expiresAt: number; // u64 timestamp
+  // Optional fields for UI functionality
+  fileName?: string;
+  recipient?: string; // Recipient address for pending agreements
+  signedByCreator?: boolean; // Whether creator has signed
+  signedByRecipient?: boolean; // Whether recipient has signed
 }
 
 // User type for the application

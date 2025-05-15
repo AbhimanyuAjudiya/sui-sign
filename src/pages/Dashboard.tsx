@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Box as InBox, Filter } from 'lucide-react';
+import { Plus, FileText, Box as InBox, Filter, RefreshCw } from 'lucide-react';
 import PageContainer from '../components/Layout/PageContainer';
 import Button from '../components/ui/Button';
 import AgreementCard from '../components/agreements/AgreementCard';
@@ -16,6 +16,25 @@ const Dashboard: React.FC = () => {
   const [agreements, setAgreements] = useState<Agreement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  
+  const loadAgreements = useCallback(async () => {
+    if (!user?.isAuthenticated || !user?.address) return;
+    
+    try {
+      setIsLoading(true);
+      console.log('Loading agreements for user:', user.address);
+      const userAgreements = await fetchAgreementsForUser(user.address);
+      console.log('Loaded agreements:', userAgreements.length);
+      setAgreements(userAgreements);
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Error fetching agreements:', error);
+      setAgreements([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
   
   useEffect(() => {
     if (!user?.isAuthenticated) {
@@ -23,20 +42,8 @@ const Dashboard: React.FC = () => {
       return;
     }
     
-    const loadAgreements = async () => {
-      try {
-        setIsLoading(true);
-        const userAgreements = await fetchAgreementsForUser(user.address);
-        setAgreements(userAgreements);
-      } catch (error) {
-        console.error('Error fetching agreements:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     loadAgreements();
-  }, [user, navigate]);
+  }, [user, navigate, loadAgreements]);
   
   const filteredAgreements = agreements.filter(agreement => {
     if (filter === 'all') return true;
@@ -68,6 +75,15 @@ const Dashboard: React.FC = () => {
             {filter === 'all' ? 'All' : 
              filter === 'draft' ? 'Drafts' : 
              filter === 'pending' ? 'Pending' : 'Signed'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />}
+            onClick={() => loadAgreements()}
+            disabled={isLoading}
+          >
+            {isLoading ? "Refreshing..." : "Refresh"}
           </Button>
           <Button
             variant="primary"
@@ -140,6 +156,12 @@ const Dashboard: React.FC = () => {
               </Button>
             </div>
           )}
+        </div>
+      )}
+      
+      {!isLoading && (
+        <div className="mt-4 text-xs text-gray-500 text-right">
+          Last refreshed: {lastRefresh.toLocaleTimeString()}
         </div>
       )}
     </PageContainer>
