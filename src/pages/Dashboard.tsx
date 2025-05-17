@@ -54,7 +54,15 @@ const Dashboard: React.FC = () => {
   });
   
   const createdByMe = filteredAgreements.filter(a => a.creator === user?.address);
-  const receivedByMe = filteredAgreements.filter(a => a.recipient === user?.address);
+  const receivedByMe = filteredAgreements.filter(a => {
+    // Exclude agreements created by me
+    if (a.creator === user?.address) return false;
+    // Include agreements where the user is a signer in any signature area
+    if (a.signer_areas && a.signer_areas.some(area => area.signer === user?.address)) return true;
+    // Optionally, include agreements where the user is set as recipient (legacy)
+    if (a.recipient === user?.address) return true;
+    return false;
+  });
 
   return (
     <PageContainer

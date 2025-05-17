@@ -20,6 +20,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [file, setFile] = useState<File | null>(selectedFile);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Update internal file state when the selectedFile prop changes
+  React.useEffect(() => {
+    if (selectedFile !== null) {
+      setFile(selectedFile);
+    }
+  }, [selectedFile]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];

@@ -328,15 +328,17 @@ const Send: React.FC = () => {
   // Handle sending an existing agreement
   const handleSendExisting = async () => {
     if (!validate() || !selectedAgreement || !user) return;
-    
+
     setIsSending(true);
     setError(null);
-    
+
     try {
-      // Process each signer
+      // Collect all signature areas for all signers
+      let allSignatureAreas: any[] = [];
+      let allRecipients: string[] = [];
+
       for (const signer of signers) {
         let recipientAddress = signer.email;
-        
         if (signer.email.includes('@')) {
           const resolvedAddress = await resolveGmailToSuiAddress(signer.email);
           if (!resolvedAddress) {
@@ -346,22 +348,39 @@ const Send: React.FC = () => {
           }
           recipientAddress = resolvedAddress;
         }
-        
-        // Send agreement to each recipient
-        const success = await sendAgreement(
-          selectedAgreement.id,
-          recipientAddress,
-          user.address,
-          expiryDate
-        );
-        
-        if (!success) {
-          setError(`Failed to send agreement to ${signer.email}. Please try again.`);
-          setIsSending(false);
-          return;
-        }
+        allRecipients.push(recipientAddress);
+
+        const signatureAreas = signer.signatureAreas.map(area => ({
+          signer: recipientAddress,
+          page: area.page,
+          x: area.x,
+          y: area.y,
+          width: area.width,
+          height: area.height,
+          inputType: 0,
+          value: [],
+          signed: false,
+          rejected: false
+        }));
+        allSignatureAreas = [...allSignatureAreas, ...signatureAreas];
       }
-      
+
+      // Send agreement once, with all recipients and all signature areas
+      // Use the first recipient as the main recipient for legacy compatibility
+      const success = await sendAgreement(
+        selectedAgreement.id,
+        allRecipients[0],
+        user.address,
+        expiryDate,
+        allSignatureAreas
+      );
+
+      if (!success) {
+        setError(`Failed to send agreement. Please try again.`);
+        setIsSending(false);
+        return;
+      }
+
       navigate('/dashboard');
     } catch (error) {
       console.error('Error sending agreement:', error);
@@ -459,21 +478,52 @@ const Send: React.FC = () => {
                         </Button>
                       </div>
                       <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-2">
-                        {filteredDrafts.map((agreement) => (
-                          <div
+                        {filteredDrafts.map((agreement) => (                            <div
                             key={agreement.id}
                             className={`p-3 rounded-md cursor-pointer transition-colors ${
                               selectedAgreement?.id === agreement.id
                                 ? 'bg-primary-50 border border-primary-200'
                                 : 'hover:bg-gray-50 border border-transparent'
                             }`}
-                            onClick={() => setSelectedAgreement(agreement)}
+                            onClick={() => {
+                              setSelectedAgreement(agreement);
+                              // Set expiry date from agreement if available, otherwise default to 30 days from now
+                              if (agreement.expiresAt) {
+                                const expiryDate = new Date(agreement.expiresAt);
+                                // Only set if it's in the future
+                                if (expiryDate > new Date()) {
+                                  setExpiryDate(expiryDate.toISOString().split('T')[0]);
+                                }
+                              }
+                            }}
                           >
                             <h3 className="font-medium">{agreement.title}</h3>
                             <p className="text-sm text-gray-500 truncate">{agreement.description}</p>
                           </div>
                         ))}
                       </div>
+                    </div>
+                    
+                    <div className="mb-4 mt-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Expiry Date <span className="text-error-600">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                        className={`w-full px-3 py-2 border ${
+                          validationErrors.expiryDate ? 'border-error-300' : 'border-gray-300'
+                        } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
+                        min={new Date().toISOString().split('T')[0]} 
+                        required
+                      />
+                      {validationErrors.expiryDate && (
+                        <p className="mt-1 text-sm text-error-600">{validationErrors.expiryDate}</p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">
+                        The agreement will expire on this date if not signed by all parties.
+                      </p>
                     </div>
                   </>
                 ) : (
@@ -512,12 +562,15 @@ const Send: React.FC = () => {
                         className={`w-full px-3 py-2 border ${
                           validationErrors.expiryDate ? 'border-error-300' : 'border-gray-300'
                         } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-                        min={new Date().toISOString().split('T')[0]} // Set minimum date to today
+                        min={new Date().toISOString().split('T')[0]} 
                         required
                       />
                       {validationErrors.expiryDate && (
                         <p className="mt-1 text-sm text-error-600">{validationErrors.expiryDate}</p>
                       )}
+                      <p className="mt-1 text-xs text-gray-500">
+                        The agreement will expire on this date if not signed by all parties.
+                      </p>
                     </div>
                     
                     <div className="mb-4">
@@ -658,7 +711,7 @@ const Send: React.FC = () => {
               
               {/* Right Column: Document Preview with Integrated Signature Areas */}
               <div className="lg:col-span-3 bg-white rounded-lg shadow p-4">
-                {activeTab === 'existing' && selectedAgreement?.fileUrl ? (
+                {(activeTab === 'existing' && selectedAgreement?.fileUrl) || (activeTab === 'new' && file) ? (
                   <div className="relative document-container">
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Document with Signature Areas</h3>
                     <p className="text-sm text-gray-500 mb-4">
@@ -667,27 +720,8 @@ const Send: React.FC = () => {
                     
                     {/* Integrated view with the document and signature area selection */}
                     <SignatureAreaSelector
-                      documentFile={file}
-                      pageNumber={currentPage}
-                      width={700}
-                      height={900}
-                      signatureAreas={getSignatureAreasForPage(currentPage)}
-                      activeSignerId={signers[activeSignerIndex]?.id || null}
-                      onAreaSelected={(signerId, area) => handleSignatureAreaSelected(signerId, area)}
-                      signers={signers.map(s => ({ id: s.id, name: s.name, color: s.color }))}
-                      onPageChange={setCurrentPage}
-                    />
-                  </div>
-                ) : activeTab === 'new' && file ? (
-                  <div className="relative document-container">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Document with Signature Areas</h3>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Select a signer, then drag anywhere on the document to create signature areas.
-                    </p>
-                    
-                    {/* Integrated view with the document and signature area selection */}
-                    <SignatureAreaSelector
-                      documentFile={file}
+                      documentFile={activeTab === 'new' ? file : null}
+                      documentUrl={activeTab === 'existing' && selectedAgreement ? selectedAgreement.fileUrl : undefined}
                       pageNumber={currentPage}
                       width={700}
                       height={900}
@@ -720,7 +754,10 @@ const Send: React.FC = () => {
                           accept=".pdf,.doc,.docx,.txt"
                           onChange={e => {
                             const selectedFile = e.target.files?.[0];
-                            if (selectedFile) setFile(selectedFile);
+                            if (selectedFile) {
+                              setFile(selectedFile);
+                              console.log("File selected:", selectedFile.name);
+                            }
                             // Always reset input value so the same file can be selected again
                             if (fileInputRef.current) fileInputRef.current.value = '';
                           }}

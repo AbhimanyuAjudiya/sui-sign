@@ -387,7 +387,10 @@ const Upload: React.FC = () => {
                       accept=".pdf,.doc,.docx,.txt"
                       onChange={e => {
                         const selectedFile = e.target.files?.[0];
-                        if (selectedFile) setFile(selectedFile);
+                        if (selectedFile) {
+                          setFile(selectedFile);
+                          console.log("File selected in upload area:", selectedFile.name);
+                        }
                         if (fileInputRef.current) fileInputRef.current.value = '';
                       }}
                     />

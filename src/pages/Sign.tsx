@@ -7,7 +7,7 @@ import Button from '../components/ui/Button';
 import SignatureCanvas from '../components/ui/SignatureCanvas';
 import { Agreement } from '../types';
 import { useUser } from '../context/UserContext';
-import { fetchAgreementById, signAgreement } from '../utils/suiClient';
+import { fetchAgreementById, signAgreement, getAgreementFileDataUrl } from '../utils/suiClient';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
@@ -24,6 +24,9 @@ const Sign: React.FC = () => {
   const [signature, setSignature] = useState('');
   const [numPages, setNumPages] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   
   useEffect(() => {
     const loadAgreement = async () => {
@@ -31,6 +34,8 @@ const Sign: React.FC = () => {
       
       try {
         setIsLoading(true);
+        setPdfUrl(null);
+        setPdfError(null);
         const agreementData = await fetchAgreementById(id);
         
         if (!agreementData) {
@@ -39,6 +44,19 @@ const Sign: React.FC = () => {
         }
         
         setAgreement(agreementData);
+
+        // Load the PDF from Walrus using fileHash/blobId
+        if (agreementData.fileHash) {
+          setPdfLoading(true);
+          try {
+            const url = await getAgreementFileDataUrl(agreementData.fileHash);
+            setPdfUrl(url);
+          } catch (err) {
+            setPdfError('Failed to load document from storage.');
+          } finally {
+            setPdfLoading(false);
+          }
+        }
       } catch (error) {
         console.error('Error fetching agreement:', error);
         setError('Failed to load agreement.');
@@ -78,8 +96,11 @@ const Sign: React.FC = () => {
   };
 
   const handleDownload = () => {
-    if (!agreement?.fileUrl) return;
-    window.open(agreement.fileUrl, '_blank');
+    if (!agreement?.fileHash) return;
+    // Download from Walrus using fileHash/blobId
+    import('../utils/documentUtils').then(({ downloadDocument }) => {
+      downloadDocument(agreement.fileHash, agreement.fileName || 'agreement.pdf');
+    });
   };
 
   if (isLoading) {
@@ -110,7 +131,9 @@ const Sign: React.FC = () => {
 
   if (!agreement) return null;
 
-  const canSign = !agreement.signedByRecipient && agreement.recipient === user?.address;
+  const canSign = agreement?.signer_areas?.some(
+    area => area.signer === user?.address && !area.signed && !area.rejected
+  );
 
   return (
     <PageContainer title={agreement.title}>
@@ -130,21 +153,36 @@ const Sign: React.FC = () => {
             </div>
             <p className="text-gray-600">{agreement.description}</p>
           </div>
-          
           <div className="p-6">
             <div className="mb-6">
-              <Document
-                file={agreement.fileUrl}
-                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                className="border rounded-lg overflow-hidden"
-              >
-                <Page
-                  pageNumber={currentPage}
-                  width={800}
-                  className="mx-auto"
-                />
-              </Document>
-              
+              {pdfLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  <span className="ml-2 text-gray-500">Loading document...</span>
+                </div>
+              ) : pdfError ? (
+                <div className="flex flex-col items-center justify-center h-64 text-error-600">
+                  <XCircle className="h-10 w-10 mb-2" />
+                  <p>{pdfError}</p>
+                </div>
+              ) : pdfUrl ? (
+                <Document
+                  file={pdfUrl}
+                  onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  <Page
+                    pageNumber={currentPage}
+                    width={800}
+                    className="mx-auto"
+                  />
+                </Document>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                  <FileText className="h-10 w-10 mb-2" />
+                  <p>No document available.</p>
+                </div>
+              )}
               {numPages && numPages > 1 && (
                 <div className="flex justify-center mt-4 space-x-2">
                   <Button
@@ -169,14 +207,12 @@ const Sign: React.FC = () => {
                 </div>
               )}
             </div>
-
             {canSign && (
               <>
                 <div className="mb-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Sign Here</h3>
                   <SignatureCanvas onChange={setSignature} />
                 </div>
-                
                 <div className="flex justify-end">
                   <Button
                     variant="primary"

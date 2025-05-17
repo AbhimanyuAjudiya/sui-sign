@@ -35,7 +35,7 @@ interface ZkLoginAccountConstructor {
 }
 
 export class ZkLoginAccount {
-    // private clientSui: SuiClient; // Renamed to avoid conflict with class property
+    private clientSui: SuiClient; // Renamed to avoid conflict with class property
     private ephemeralKeyPair: Ed25519Keypair;
     private jwt: string;
     private salt: string;

@@ -20,6 +20,7 @@ interface SignatureArea {
 
 interface SignatureAreaSelectorProps {
   documentFile: File | null;
+  documentUrl?: string; // Added documentUrl for draft agreements
   pageNumber: number;
   width: number;
   height: number;
@@ -45,6 +46,7 @@ const SIGNER_COLORS = [
 
 const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
   documentFile,
+  documentUrl,
   pageNumber,
   width,
   height,
@@ -179,6 +181,55 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
         setDocumentLoaded(true); // Unsupported type, just show blank
       }
     }
+    // Handle documentUrl from existing agreements
+    if (documentUrl && !documentFile) {
+      setDocumentLoaded(false);
+      console.log('Loading document from URL:', documentUrl);
+      
+      // For PDF URLs
+      if (documentUrl.toLowerCase().endsWith('.pdf')) {
+        // PDF handling is done through the Document component
+        console.log('PDF document will be loaded by Document component');
+      } else {
+        // For image URLs
+        fabric.Image.fromURL(
+          documentUrl,
+          (img: fabric.Image) => {
+            if (!canvas || !fabricCanvasRef.current) {
+              setDocumentLoaded(true);
+              return;
+            }
+            
+            if (!img || !img.width || !img.height) {
+              console.error('Failed to load image from URL:', documentUrl);
+              setDocumentLoaded(true);
+              return;
+            }
+            
+            const scale = Math.min(width / img.width, height / img.height);
+            img.scale(scale);
+            img.set({
+              left: (width - img.width * scale) / 2,
+              top: (height - img.height * scale) / 2,
+              selectable: false,
+              evented: false
+            });
+            
+            canvas.setBackgroundImage(img, () => {
+              if (canvas) {
+                canvas.renderAll();
+                addDottedGuidelines(canvas, width, height);
+              }
+              setDocumentLoaded(true);
+            });
+          },
+          { crossOrigin: 'Anonymous', onerror: () => {
+            console.error('Error loading image from URL:', documentUrl);
+            setDocumentLoaded(true);
+          }}
+        );
+      }
+    }
     let rect: fabric.Rect | null = null;
     let startX = 0;
     let startY = 0;
@@ -259,7 +310,7 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
         }
       }
     };
-  }, [documentFile, pageNumber, width, height, signatureAreas, activeSignerId, onAreaSelected, isDrawing, getActiveSignerColor]);
+  }, [documentFile, pageNumber, width, height, signatureAreas, activeSignerId, onAreaSelected, isDrawing, getActiveSignerColor, documentUrl]);
 
   // Mouse events for dragging the highlight
   const handleHighlightMouseDown = (e: React.MouseEvent) => {
@@ -422,11 +473,19 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         )}
-        {documentFile && documentFile.type === 'application/pdf' ? (
+        {(documentFile && documentFile.type === 'application/pdf') || (documentUrl && documentUrl.toLowerCase().endsWith('.pdf')) ? (
           <div className="w-full flex justify-center">
             <Document
-              file={documentFile}
-              onLoadSuccess={({ numPages }) => { setNumPages(numPages); setDocumentLoaded(true); }}
+              file={documentFile || documentUrl}
+              onLoadSuccess={({ numPages }) => { 
+                setNumPages(numPages); 
+                setDocumentLoaded(true); 
+                console.log(`PDF loaded successfully with ${numPages} pages`);
+              }}
+              onLoadError={(error) => {
+                console.error('Error loading PDF:', error);
+                setDocumentLoaded(true);
+              }}
               loading={<div className="flex justify-center items-center h-full"><p className="text-gray-500">Loading PDF...</p></div>}
               error={<div className="flex justify-center items-center h-full bg-red-50 p-4"><p className="text-red-500">Could not load PDF. Try a different document format.</p></div>}
             >
@@ -436,6 +495,12 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
                 renderAnnotationLayer={false}
                 renderTextLayer={false}
                 className="pdf-page"
+                onRenderSuccess={() => {
+                  console.log(`Page ${currentPage} rendered successfully`);
+                }}
+                onRenderError={(error) => {
+                  console.error(`Error rendering page ${currentPage}:`, error);
+                }}
               />
             </Document>
           </div>

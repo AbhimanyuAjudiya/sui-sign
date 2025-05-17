@@ -1,6 +1,6 @@
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Agreement, AgreementStatus } from '../types';
+import { Agreement, AgreementStatus, SignerArea } from '../types';
 
 // In a real app, this would come from environment var// Mock function to fetch agreements for a user
 export async function fetchAgreementsForUser(address: string): Promise<Agreement[]> {
@@ -20,11 +20,10 @@ export async function fetchAgreementsForUser(address: string): Promise<Agreement
     }
     
     // Filter agreements relevant to the user
-    const userAgreements = mockDatabase.agreements.filter(a => 
-      a.creator === address || 
-      a.creator === 'ANY_ADDRESS' || 
-      a.recipient === address || 
-      a.recipient === 'ANY_ADDRESS'
+    const userAgreements = mockDatabase.agreements.filter(a =>
+      a.creator === address ||
+      a.recipient === address ||
+      (Array.isArray(a.signer_areas) && a.signer_areas.some(area => area.signer === address))
     );
     
     console.log(`Found ${userAgreements.length} agreements for user ${address}`);
@@ -71,80 +70,7 @@ const saveAgreementsToStorage = (agreements: Agreement[]) => {
 };
 
 // Default agreements for first-time use
-const defaultAgreements: Agreement[] = [
-  {
-    id: '0x1234567890abcdef',
-    title: 'Consulting Agreement',
-    description: 'Service agreement for software development consulting',
-    fileHash: 'bafybeihegqxct3kfkyw6k7brszgouqmm2ozxs6daoswdkce373wbfseqxa',
-    fileName: 'consulting_agreement.pdf',
-    fileUrl: 'https://example.com/files/consulting_agreement.pdf',
-    creator: 'ANY_ADDRESS',
-    recipient: '0xabcdef1234567890',
-    signedByCreator: true,
-    signedByRecipient: false,
-    status: AgreementStatus.PENDING,
-    createdAt: Date.now() - 86400000, // 1 day ago
-    isPublic: false,
-    expiresAt: Date.now() + 2592000000, // 30 days from now
-    feePaid: true,
-    signer_areas: []
-  },
-  {
-    id: '0xabcdef1234567890',
-    title: 'Employment Contract',
-    description: 'Full-time employment agreement with standard terms',
-    fileHash: 'bafybeig4vw7duavkpenht6pk4m6zkzbvjgydltwz7s77pgozf3ixjh4jri',
-    fileName: 'employment_contract.pdf',
-    fileUrl: 'https://example.com/files/employment_contract.pdf',
-    creator: '0x5678901234abcdef',
-    recipient: 'ANY_ADDRESS',
-    signedByCreator: true,
-    signedByRecipient: false,
-    status: AgreementStatus.PENDING,
-    createdAt: Date.now() - 172800000, // 2 days ago
-    isPublic: false,
-    expiresAt: Date.now() + 1296000000, // 15 days from now
-    feePaid: true,
-    signer_areas: []
-  },
-  {
-    id: '0x0987654321fedcba',
-    title: 'NDA Agreement',
-    description: 'Non-disclosure agreement for project Alpha',
-    fileHash: 'bafybeih4i7kee6oe5t76tyzxan5mpeg6e56qpv5q6l3a2im563gwjtq7im',
-    fileName: 'nda_alpha.pdf',
-    fileUrl: 'https://example.com/files/nda_alpha.pdf',
-    creator: 'ANY_ADDRESS',
-    recipient: undefined,
-    signedByCreator: false,
-    signedByRecipient: false,
-    status: AgreementStatus.DRAFT,
-    createdAt: Date.now() - 259200000, // 3 days ago
-    isPublic: false,
-    expiresAt: Date.now() + 3888000000, // 45 days from now
-    feePaid: false,
-    signer_areas: []
-  },
-  {
-    id: '0xfedcba0987654321',
-    title: 'Partnership Agreement',
-    description: 'Terms for joint venture between Company A and Company B',
-    fileHash: 'bafybeiadpnmoiy4njtwxc5c7psije2nhs7jvhpwzigj5qedsyrgwn6o2r4',
-    fileName: 'partnership_agreement.pdf',
-    fileUrl: 'https://example.com/files/partnership_agreement.pdf',
-    creator: '0x1111222233334444',
-    recipient: 'ANY_ADDRESS',
-    signedByCreator: true,
-    signedByRecipient: true,
-    status: AgreementStatus.SIGNED,
-    createdAt: Date.now() - 345600000, // 4 days ago
-    isPublic: false,
-    expiresAt: Date.now() + 5184000000, // 60 days from now
-    feePaid: true,
-    signer_areas: []
-  }
-];
+
 
 // Initialize the mock database with stored agreements or defaults
 console.log('Initializing mock database');
@@ -187,24 +113,7 @@ export async function createAgreement(
   const expiryTimestamp = expiryDate 
     ? new Date(expiryDate).getTime() 
     : (new Date().getTime() + 30 * 24 * 60 * 60 * 1000); // Default 30 days from now
-  
-  // Add the new agreement to mock database
-  mockDatabase.agreements.push({
-    id: agreementId,
-    title,
-    description,
-    fileHash,
-    fileName: `agreement-${title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
-    fileUrl: `https://example.com/files/${fileHash}.pdf`,
-    creator,
-    status: AgreementStatus.DRAFT, // Always start as DRAFT
-    createdAt: Date.now(),
-    expiresAt: expiryTimestamp,
-    isPublic: false,
-    feePaid: false,
-    signer_areas: []
-  });
-  
+
   // Save to localStorage for persistence
   saveAgreementsToStorage(mockDatabase.agreements);
   
@@ -217,18 +126,57 @@ export async function sendAgreement(
   agreementId: string,
   recipient: string,
   signer: string,
-  expiryDate?: string
+  expiryDate?: string,
+  signatureAreas?: SignerArea[]
 ): Promise<boolean> {
-  console.log('Sending agreement on chain:', { agreementId, recipient, signer, expiryDate });
+  console.log('Sending agreement on chain:', { agreementId, recipient, signer, expiryDate, signatureAreas });
   
   // Find the agreement in our mock database
   const agreement = mockDatabase.agreements.find(a => a.id === agreementId);
   
   if (agreement) {
-    // Update the agreement status and add recipient
     agreement.status = AgreementStatus.PENDING;
+    // Always keep recipient for legacy, but also ensure all signers are in signer_areas
     agreement.recipient = recipient;
-    
+
+    // If signatureAreas provided, merge with existing signer_areas to avoid duplicates
+    if (signatureAreas && signatureAreas.length > 0) {
+      // Remove any existing areas for this recipient to avoid duplicates
+      agreement.signer_areas = [
+        ...agreement.signer_areas.filter(area => area.signer !== recipient),
+        ...signatureAreas
+      ];
+    } else if (!agreement.signer_areas || agreement.signer_areas.length === 0) {
+      agreement.signer_areas = [{
+        signer: recipient,
+        page: 1,
+        x: 100,
+        y: 400,
+        width: 200,
+        height: 50,
+        inputType: 0,
+        value: [],
+        signed: false,
+        rejected: false
+      }];
+    } else {
+      // If already has signer_areas, ensure recipient is included
+      if (!agreement.signer_areas.some(area => area.signer === recipient)) {
+        agreement.signer_areas.push({
+          signer: recipient,
+          page: 1,
+          x: 100,
+          y: 400,
+          width: 200,
+          height: 50,
+          inputType: 0,
+          value: [],
+          signed: false,
+          rejected: false
+        });
+      }
+    }
+
     // Set expiry date if provided
     if (expiryDate) {
       agreement.expiresAt = new Date(expiryDate).getTime();
@@ -280,16 +228,6 @@ export async function signAgreement(
   return true;
 }
 
-// Remove the duplicate fetchAgreementsForUser implementation below
-// Mock function to fetch agreements for a user
-// export async function fetchAgreementsForUser(address: string): Promise<Agreement[]> {
-//   console.log('Fetching agreements for address:', address);
-//   // Return a copy of agreements relevant to the user (created by them or where they are a recipient)
-//   return mockDatabase.agreements
-//     .filter(a => a.creator === address || a.creator === 'ANY_ADDRESS' || a.recipient === address || a.recipient === 'ANY_ADDRESS')
-//     .map(a => ({...a})); // Return a copy to prevent direct mutations
-// }
-
 // Mock function to fetch a single agreement by ID
 export async function fetchAgreementById(id: string): Promise<Agreement | null> {
   console.log('Fetching agreement by ID:', id);
@@ -310,7 +248,19 @@ export async function fetchAgreementById(id: string): Promise<Agreement | null> 
   }
   
   console.log('Found agreement:', agreement);
-  return {...agreement}; // Return a copy to prevent direct mutations
+  // Remove any fileUrl from example.com or fake data URL
+  const cleanAgreement = { ...agreement };
+  if (cleanAgreement.fileUrl && cleanAgreement.fileUrl.startsWith('http')) {
+    cleanAgreement.fileUrl = '';
+  }
+  return cleanAgreement;
+}
+
+// Add a helper to get the real data URL for a Walrus blobId
+export async function getAgreementFileDataUrl(fileHash: string): Promise<string> {
+  if (!fileHash) return '';
+  const { getDocumentDataUrl } = await import('./documentUtils');
+  return await getDocumentDataUrl(fileHash);
 }
 
 // Upload a file to Walrus storage
@@ -324,6 +274,7 @@ export async function uploadFileToWalrus(file: File): Promise<string> {
   try {
     // Convert the File to an ArrayBuffer
     const fileBuffer = await fileToArrayBuffer(file);
+    console.log('File converted to ArrayBuffer successfully:', file.name, 'size:', fileBuffer.byteLength);
 
     // Get the current user's session
     // In a production app, we should get the real ZkLoginAccount here
@@ -342,9 +293,10 @@ export async function uploadFileToWalrus(file: File): Promise<string> {
     
     // Upload the file to Walrus with a 10 epoch storage duration
     const blobId = await uploadAgreementToWalrus(fileBuffer, mockZkLoginSigner, 10);
+    console.log('File uploaded to Walrus successfully, blobId:', blobId);
     return blobId;
   } catch (error) {
     console.error('Error uploading file to Walrus:', error);
-    throw error;
+    throw new Error(`Failed to upload file to storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
