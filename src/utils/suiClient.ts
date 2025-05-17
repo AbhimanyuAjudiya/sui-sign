@@ -199,32 +199,52 @@ export async function sendAgreement(
 // Mock function for signing an agreement
 export async function signAgreement(
   agreementId: string,
-  signer: string
+  signer: string,
+  opts?: {
+    dataUrl?: string; // base64 image
+    text?: string;
+    areaIdx?: number;
+    position?: { x: number; y: number };
+    page?: number;
+  }
 ): Promise<boolean> {
-  console.log('Signing agreement on chain:', { agreementId, signer });
-  
+  console.log('Signing agreement on chain:', { agreementId, signer, opts });
   // Find the agreement in our mock database
   const agreement = mockDatabase.agreements.find(a => a.id === agreementId);
-  
   if (agreement) {
-    // Update the signing status based on who is signing
-    if (agreement.creator === signer) {
-      agreement.signedByCreator = true;
-    } else if (agreement.recipient === signer) {
-      agreement.signedByRecipient = true;
+    // Find the correct signer area (by areaIdx or by signer/page/position)
+    let areaIdx = opts?.areaIdx;
+    if (typeof areaIdx !== 'number' && opts?.page != null && opts?.position) {
+      areaIdx = agreement.signer_areas.findIndex(
+        a => a.signer === signer && a.page === opts.page && a.x === opts.position!.x && a.y === opts.position!.y
+      );
     }
-    
-    // If both parties have signed, update the status
-    if (agreement.signedByCreator && agreement.signedByRecipient) {
+    if (typeof areaIdx !== 'number' || areaIdx < 0) {
+      // fallback: first unsigned area for this signer
+      areaIdx = agreement.signer_areas.findIndex(a => a.signer === signer && !a.signed && !a.rejected);
+    }
+    if (areaIdx >= 0) {
+      const area = agreement.signer_areas[areaIdx];
+      if (!area.signed && !area.rejected) {
+        if (opts?.dataUrl) {
+          // Store as base64 string (simulate vector<u8> in real chain)
+          // Store as UTF-8 code units (simulate vector<u8> in real chain)
+          area.value = Array.from(unescape(encodeURIComponent(opts.dataUrl))).map(c => c.charCodeAt(0));
+          area.inputType = 1; // image
+        } else if (opts?.text) {
+          area.value = Array.from(unescape(encodeURIComponent(opts.text))).map(c => c.charCodeAt(0));
+          area.inputType = 0; // text
+        }
+        area.signed = true;
+      }
+    }
+    // If all areas are signed or rejected, mark agreement as SIGNED
+    if (agreement.signer_areas.every(a => a.signed || a.rejected)) {
       agreement.status = AgreementStatus.SIGNED;
     }
-    
-    // Save changes to localStorage
     saveAgreementsToStorage(mockDatabase.agreements);
-    
     console.log(`Updated agreement ${agreementId} signing status`);
   }
-  
   return true;
 }
 
