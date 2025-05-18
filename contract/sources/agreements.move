@@ -1,16 +1,11 @@
 module contract::agreements {
 
-    // Import necessary types directly
-    // UID and TxContext can be used as sui::object::UID and sui::tx_context::TxContext
     use sui::coin::Coin;
     use sui::sui::SUI;
     use sui::clock::Clock;
     use sui::balance::Balance;
-    use sui::event; // For event::emit
+    use sui::event;
 
-    // vector functions are implicitly available from std::vector
-
-    /// Agreement status
     public enum Status has copy, drop, store {
         Draft,
         Pending,
@@ -19,7 +14,16 @@ module contract::agreements {
         Rejected,
     }
 
-    /// Signature area for a signer
+    public struct UserInfo has copy, drop, store {
+        address: address,
+        email: vector<u8>,
+    }
+
+    public struct UserRegistry has key, store {
+        id: UID,
+        registered_users: vector<UserInfo>,
+    }
+
     public struct SignerArea has copy, drop, store {
         signer: address,
         page: u64,
@@ -27,13 +31,12 @@ module contract::agreements {
         y: u64,
         width: u64,
         height: u64,
-        input_type: u8, // 0 = text, 1 = image
-        value: vector<u8>, // signature hash or value
+        input_type: u8,
+        value: vector<u8>,
         signed: bool,
         rejected: bool,
     }
 
-    /// Agreement object
     public struct Agreement has key, store {
         id: UID,
         creator: address,
@@ -49,29 +52,88 @@ module contract::agreements {
         expires_at: u64,
     }
 
-    /// Treasury for collecting fees
     public struct Treasury has key, store {
         id: UID,
         admin: address,
-        fee: u64, // in MIST
+        fee: u64,
         balance: Balance<SUI>,
     }
 
-    /// Event definitions
     public struct AgreementEvent has copy, drop, store {
         agreement_id: address,
-        action: u8, // 0=create, 1=sent, 2=signed, 3=rejected, 4=expired, 5=fee_paid
+        action: u8,
         actor: address,
         timestamp: u64,
     }
     public struct AdminEvent has copy, drop, store {
-        action: u8, // 0=withdraw, 1=fee_update
+        action: u8,
         admin: address,
         value: u64,
         timestamp: u64,
     }
 
-    /// Create treasury (call once at deployment)
+    public entry fun init_user_registry(ctx: &mut TxContext) {
+        let registry = UserRegistry {
+            id: sui::object::new(ctx),
+            registered_users: vector::empty<UserInfo>(),
+        };
+        sui::transfer::public_share_object(registry);
+    }
+
+    public entry fun register_user(
+        registry: &mut UserRegistry,
+        email: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let user = sui::tx_context::sender(ctx);
+        if (!is_address_registered(registry, user)) {
+            let user_info = UserInfo {
+                address: user,
+                email,
+            };
+            vector::push_back(&mut registry.registered_users, user_info);
+        };
+    }
+
+    public fun is_address_registered(registry: &UserRegistry, user_address: address): bool {
+        let length = vector::length(&registry.registered_users);
+        let mut i = 0;
+        while (i < length) {
+            let user_info = vector::borrow(&registry.registered_users, i);
+            if (user_info.address == user_address) {
+                return true
+            };
+            i = i + 1;
+        };
+        false
+    }
+
+    public fun is_email_registered(registry: &UserRegistry, email: &vector<u8>): bool {
+        let length = vector::length(&registry.registered_users);
+        let mut i = 0;
+        while (i < length) {
+            let user_info = vector::borrow(&registry.registered_users, i);
+            if (user_info.email == *email) {
+                return true
+            };
+            i = i + 1;
+        };
+        false
+    }
+
+    public fun get_address_by_email(registry: &UserRegistry, email: &vector<u8>): address {
+        let length = vector::length(&registry.registered_users);
+        let mut i = 0;
+        while (i < length) {
+            let user_info = vector::borrow(&registry.registered_users, i);
+            if (user_info.email == *email) {
+                return user_info.address
+            };
+            i = i + 1;
+        };
+        @0x0
+    }
+
     public entry fun create_treasury(admin: address, fee: u64, coin_in: Coin<SUI>, ctx: &mut TxContext) {
         let mut new_balance = sui::balance::zero<SUI>();
         sui::balance::join(&mut new_balance, sui::coin::into_balance(coin_in));
@@ -84,7 +146,81 @@ module contract::agreements {
         sui::transfer::public_share_object(treasury);
     }
 
-    /// Create a draft agreement (max 3 per sender enforced off-chain)
+    public entry fun create_agreement(
+        title: vector<u8>,
+        description: vector<u8>,
+        file_hash: vector<u8>,
+        file_url: vector<u8>,
+        signer_addresses: vector<address>,
+        signer_emails: vector<vector<u8>>,
+        pages: vector<u64>,
+        xs: vector<u64>,
+        ys: vector<u64>,
+        widths: vector<u64>,
+        heights: vector<u64>,
+        input_types: vector<u8>,
+        is_public: bool,
+        expires_at: u64,
+        registry: &UserRegistry,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let mut signer_areas = vector::empty<SignerArea>();
+        let n = vector::length(&signer_addresses);
+        let email_count = vector::length(&signer_emails);
+        
+        let creator = sui::tx_context::sender(ctx);
+        let mut i = 0u64;
+        
+        while (i < n) {
+            let mut signer_address = *vector::borrow(&signer_addresses, i);
+            
+            assert!(creator != signer_address, 1);
+            
+            if (i < email_count && !vector::is_empty(vector::borrow(&signer_emails, i))) {
+                let email = vector::borrow(&signer_emails, i);
+                assert!(is_email_registered(registry, email), 2);
+                signer_address = get_address_by_email(registry, email);
+            } else {
+                assert!(is_address_registered(registry, signer_address), 3);
+            };
+            
+            let area = SignerArea {
+                signer: signer_address,
+                page: *vector::borrow(&pages, i),
+                x: *vector::borrow(&xs, i),
+                y: *vector::borrow(&ys, i),
+                width: *vector::borrow(&widths, i),
+                height: *vector::borrow(&heights, i),
+                input_type: *vector::borrow(&input_types, i),
+                value: vector::empty<u8>(),
+                signed: false,
+                rejected: false,
+            };
+            vector::push_back(&mut signer_areas, area);
+            i = i + 1;
+        };
+        
+        let agreement = Agreement {
+            id: sui::object::new(ctx),
+            creator,
+            title,
+            description,
+            file_hash,
+            file_url,
+            signer_areas,
+            status: Status::Pending,
+            created_at: sui::clock::timestamp_ms(clock),
+            is_public,
+            fee_paid: false,
+            expires_at,
+        };
+        
+        emit_agreement_event(sui::object::uid_to_address(&agreement.id), 1, creator, sui::clock::timestamp_ms(clock));
+        
+        sui::transfer::public_share_object(agreement);
+    }
+
     public entry fun create_draft(
         title: vector<u8>,
         description: vector<u8>,
@@ -120,7 +256,7 @@ module contract::agreements {
             };
             vector::push_back(&mut signer_areas, area);
             i = i + 1;
-        }; // Ensure while loop is a statement
+        };
         let agreement = Agreement {
             id: sui::object::new(ctx),
             creator: sui::tx_context::sender(ctx),
@@ -138,23 +274,35 @@ module contract::agreements {
         sui::transfer::public_share_object(agreement);
     }
 
-    /// Send agreement (move to Pending)
     public entry fun send_agreement(
         agreement: &mut Agreement,
-        clock: &Clock, // Added clock
+        registry: &UserRegistry,
+        clock: &Clock,
         ctx: &mut TxContext
-    ) {
-        assert!(&agreement.status == &Status::Draft, 0);
+    ) {    
+        let sender = sui::tx_context::sender(ctx);
+        assert!(sender == agreement.creator, 1);
+        
+        let mut i = 0;
+        let signer_count = vector::length(&agreement.signer_areas);
+        while (i < signer_count) {
+            let area = vector::borrow(&agreement.signer_areas, i);
+            assert!(area.signer != sender, 2);
+            
+            assert!(is_address_registered(registry, area.signer), 3);
+            
+            i = i + 1;
+        };
+        
         agreement.status = Status::Pending;
-        emit_agreement_event(agreement.creator, 1, sui::tx_context::sender(ctx), sui::clock::timestamp_ms(clock)); // Use clock
+        emit_agreement_event(sui::object::uid_to_address(&agreement.id), 1, sender, sui::clock::timestamp_ms(clock));
     }
 
-    /// Pay fee (sender or any signer)
     public entry fun pay_fee(
         agreement: &mut Agreement,
         treasury: &mut Treasury,
-        mut fee_coin: Coin<SUI>, // Make mutable to be modified by sui::coin::split
-        clock: &Clock, // Added clock
+        mut fee_coin: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(!agreement.fee_paid, 1);
@@ -165,22 +313,20 @@ module contract::agreements {
         let to_treasury_coin = sui::coin::split(&mut fee_coin, required, ctx);
         sui::balance::join(&mut treasury.balance, sui::coin::into_balance(to_treasury_coin));
         agreement.fee_paid = true;
-        emit_agreement_event(agreement.creator, 5, sui::tx_context::sender(ctx), sui::clock::timestamp_ms(clock)); // Use clock
+        emit_agreement_event(sui::object::uid_to_address(&agreement.id), 5, sui::tx_context::sender(ctx), sui::clock::timestamp_ms(clock));
 
-        // The remainder in fee_coin is the refund
-        if (sui::coin::value(&fee_coin) > 0) { // Added parentheses
+        if (sui::coin::value(&fee_coin) > 0) {
             sui::transfer::public_transfer(fee_coin, sui::tx_context::sender(ctx));
         } else {
             sui::coin::destroy_zero(fee_coin);
         }
     }
 
-    /// Sign a signature area (only assigned signer, after fee paid)
     public entry fun sign_area(
         agreement: &mut Agreement,
         area_idx: u64,
         signature_hash: vector<u8>,
-        clock: &Clock, // Added clock
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(&agreement.status == &Status::Pending, 1);
@@ -191,17 +337,16 @@ module contract::agreements {
         assert!(!area.signed && !area.rejected, 4);
         area.value = signature_hash;
         area.signed = true;
-        emit_agreement_event(agreement.creator, 2, signer, sui::clock::timestamp_ms(clock)); // Use clock
-        if (all_signed(&agreement.signer_areas)) { // Corrected: added parentheses
+        emit_agreement_event(sui::object::uid_to_address(&agreement.id), 2, signer, sui::clock::timestamp_ms(clock));
+        if (all_signed(&agreement.signer_areas)) {
             agreement.status = Status::Signed;
         }
     }
 
-    /// Reject agreement (signer)
     public entry fun reject_agreement(
         agreement: &mut Agreement,
         area_idx: u64,
-        clock: &Clock, // Added clock
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(&agreement.status == &Status::Pending, 1);
@@ -211,10 +356,9 @@ module contract::agreements {
         assert!(!area.signed && !area.rejected, 3);
         area.rejected = true;
         agreement.status = Status::Rejected;
-        emit_agreement_event(agreement.creator, 3, signer, sui::clock::timestamp_ms(clock)); // Use clock
+        emit_agreement_event(sui::object::uid_to_address(&agreement.id), 3, signer, sui::clock::timestamp_ms(clock));
     }
 
-    /// Expire agreement (anyone, after expires_at)
     public entry fun expire_agreement(
         agreement: &mut Agreement,
         clock: &Clock,
@@ -223,33 +367,31 @@ module contract::agreements {
         assert!(&agreement.status == &Status::Pending, 1);
         assert!(sui::clock::timestamp_ms(clock) >= agreement.expires_at, 2);
         agreement.status = Status::Expired;
-        emit_agreement_event(agreement.creator, 4, sui::tx_context::sender(ctx), sui::clock::timestamp_ms(clock));
+        emit_agreement_event(sui::object::uid_to_address(&agreement.id), 4, sui::tx_context::sender(ctx), sui::clock::timestamp_ms(clock));
     }
 
-    /// Admin: withdraw SUI from treasury
     public entry fun withdraw(
         treasury: &mut Treasury,
         amount: u64,
-        clock: &Clock, // Added clock
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(sui::tx_context::sender(ctx) == treasury.admin, 1);
-        let coin_balance = sui::balance::split(&mut treasury.balance, amount); // Returns Balance<SUI>
-        let coin_to_withdraw = sui::coin::from_balance(coin_balance, ctx); // Convert Balance to Coin
+        let coin_balance = sui::balance::split(&mut treasury.balance, amount);
+        let coin_to_withdraw = sui::coin::from_balance(coin_balance, ctx);
         sui::transfer::public_transfer(coin_to_withdraw, treasury.admin);
-        emit_admin_event(0, treasury.admin, amount, sui::clock::timestamp_ms(clock)); // Use clock
+        emit_admin_event(0, treasury.admin, amount, sui::clock::timestamp_ms(clock));
     }
 
-    /// Admin: update fee
     public entry fun update_fee(
         treasury: &mut Treasury,
         new_fee: u64,
-        clock: &Clock, // Added clock
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(sui::tx_context::sender(ctx) == treasury.admin, 1);
         treasury.fee = new_fee;
-        emit_admin_event(1, treasury.admin, new_fee, sui::clock::timestamp_ms(clock)); // Use clock
+        emit_admin_event(1, treasury.admin, new_fee, sui::clock::timestamp_ms(clock));
     }
 
     fun all_signed(areas: &vector<SignerArea>): bool {
@@ -258,16 +400,16 @@ module contract::agreements {
         while (i < n) {
             let area = vector::borrow(areas, i);
             if (!area.signed && !area.rejected) {
-                return false // Early exit, no semicolon needed
-            }; // Semicolon to make if-block a statement
+                return false
+            };
             i = i + 1;
-        }; // Semicolon to make while-block a statement
-        true // Implicit return of boolean
+        };
+        true
     }
 
-    fun emit_agreement_event(agreement_creator_address: address, action: u8, actor: address, ts: u64) {
+    fun emit_agreement_event(agreement_id: address, action: u8, actor: address, ts: u64) {
         event::emit(AgreementEvent {
-            agreement_id: agreement_creator_address,
+            agreement_id,
             action,
             actor,
             timestamp: ts,
