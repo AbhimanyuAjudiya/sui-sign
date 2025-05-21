@@ -27,7 +27,7 @@
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/suisign.git
+git clone https://github.com/AbhimanyuAjudiya/sui-sign.git
 cd suisign
 ```
 
@@ -39,16 +39,8 @@ pnpm install
 
 #### 3. Set Up Environment Variables
 
-Create a `.env` file in the root directory and add the following:
+Create a `.env` file in the root directory and add the vars from `.env.example`
 
-```env
-VITE_SUI_NETWORK=testnet
-VITE_PACKAGE_ID=your_package_id
-VITE_MODULE_NAME=your_module_name
-VITE_OBJECT_ID=your_object_id
-```
-
-Replace `your_package_id`, `your_module_name`, and `your_object_id` with the actual values from your smart contract deployment.
 
 ## 📦 Deploying Smart Contracts on Sui Testnet
 
