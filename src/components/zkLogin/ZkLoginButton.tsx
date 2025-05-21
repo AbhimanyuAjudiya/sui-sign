@@ -88,7 +88,7 @@ const ZkLoginButton = ({ onLogin, isLoading = false }: ZkLoginButtonProps) => {
         onLogin();
       }
     } catch (error) {
-      console.error('Login initialization failed:', error);
+      // console.error('Login initialization failed:', error);
       alert('Failed to initiate login. Please try again: ' + String(error));
     }
   }, [setEphemeralKeyPair, setRandomness, onLogin]);
@@ -97,7 +97,7 @@ const ZkLoginButton = ({ onLogin, isLoading = false }: ZkLoginButtonProps) => {
     <Button
       onClick={handleLogin}
       isLoading={isLoading}
-      className="flex items-center justify-center space-x-2 bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 py-2 px-4 rounded-md shadow-sm w-full"
+      className="flex items-center justify-center space-x-2 border border-gray-300 text-gray-800 hover:bg-gray-50 py-2 px-4 rounded-md shadow-sm w-full"
     >
       <svg width="20" height="20" viewBox="0 0 24 24">
         <path

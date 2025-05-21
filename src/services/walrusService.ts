@@ -8,7 +8,7 @@ class MockWalrusClient {
   
   constructor(options: { network: string }) {
     this.network = options.network;
-    console.log(`Initialized Mock Walrus Client on ${this.network}`);
+    // console.log(`Initialized Mock Walrus Client on ${this.network}`);
     
     // Load any existing data from localStorage for persistence across refreshes
     this.loadFromLocalStorage();
@@ -26,12 +26,12 @@ class MockWalrusClient {
           if (blobData) {
             const data = new Uint8Array(JSON.parse(blobData));
             this.blobStorage.set(key, data);
-            console.log(`[Mock Walrus] Loaded blob ${key} from localStorage (${data.length} bytes)`);
+            // console.log(`[Mock Walrus] Loaded blob ${key} from localStorage (${data.length} bytes)`);
           }
         });
       }
     } catch (err) {
-      console.error('[Mock Walrus] Failed to load from localStorage:', err);
+      // console.error('[Mock Walrus] Failed to load from localStorage:', err);
     }
   }
   
@@ -50,9 +50,9 @@ class MockWalrusClient {
       
       // Store the actual blob data (as JSON array)
       localStorage.setItem(`walrus-blob-${blobId}`, JSON.stringify(Array.from(data)));
-      console.log(`[Mock Walrus] Saved blob ${blobId} to localStorage (${data.length} bytes)`);
+      // console.log(`[Mock Walrus] Saved blob ${blobId} to localStorage (${data.length} bytes)`);
     } catch (err) {
-      console.error('[Mock Walrus] Failed to save to localStorage:', err);
+      // console.error('[Mock Walrus] Failed to save to localStorage:', err);
     }
   }
   
@@ -76,11 +76,11 @@ class MockWalrusClient {
     // Also persist to localStorage for better demo experience
     this.saveToLocalStorage(blobId, blob);
     
-    console.log(`[Mock Walrus] Stored blob ${blobId} (${blob.length} bytes) for ${epochs} epochs`);
+    // console.log(`[Mock Walrus] Stored blob ${blobId} (${blob.length} bytes) for ${epochs} epochs`);
     
     // Log other parameters
-    console.log(`[Mock Walrus] Signer address: ${signer?.getAddress?.() || 'unknown'}`);
-    console.log(`[Mock Walrus] Deletable: ${deletable}`);
+    // console.log(`[Mock Walrus] Signer address: ${signer?.getAddress?.() || 'unknown'}`);
+    // console.log(`[Mock Walrus] Deletable: ${deletable}`);
     
     return { blobId };
   }
@@ -90,7 +90,7 @@ class MockWalrusClient {
     
     if (!blob) {
       // For demo purposes, generate a more realistic PDF for non-existent blobs
-      console.log(`[Mock Walrus] Generating mock data for blobId: ${blobId}`);
+      // console.log(`[Mock Walrus] Generating mock data for blobId: ${blobId}`);
       
       // Create a simple PDF (this is a very minimal PDF structure)
       const mockPdfData = new Uint8Array([
@@ -142,16 +142,16 @@ class MockWalrusClient {
       // Store this mock PDF for future requests
       this.blobStorage.set(blobId, mockPdfData);
       
-      console.log(`[Mock Walrus] Generated mock PDF for ${blobId} (${mockPdfData.length} bytes)`);
+      // console.log(`[Mock Walrus] Generated mock PDF for ${blobId} (${mockPdfData.length} bytes)`);
       return mockPdfData;
     }
     
-    console.log(`[Mock Walrus] Retrieved blob ${blobId} (${blob.length} bytes)`);
+    // console.log(`[Mock Walrus] Retrieved blob ${blobId} (${blob.length} bytes)`);
     return blob;
   }
   
   reset(): void {
-    console.log(`[Mock Walrus] Client reset`);
+    // console.log(`[Mock Walrus] Client reset`);
   }
 }
 
@@ -176,7 +176,7 @@ export const uploadAgreementToWalrus = async (
   try {
     const fileBytes = new Uint8Array(file);
 
-    console.log(`Uploading file (${fileBytes.length} bytes) to Walrus...`);
+    // console.log(`Uploading file (${fileBytes.length} bytes) to Walrus...`);
     
     const { blobId } = await walrusClient.writeBlob({
       blob: fileBytes,
@@ -185,10 +185,10 @@ export const uploadAgreementToWalrus = async (
       signer: signer,
     });
 
-    console.log(`File uploaded successfully to Walrus with blob ID: ${blobId}`);
+    // console.log(`File uploaded successfully to Walrus with blob ID: ${blobId}`);
     return blobId;
   } catch (error) {
-    console.error('Error uploading file to Walrus:', error);
+    // console.error('Error uploading file to Walrus:', error);
     throw error;
   }
 };
@@ -200,7 +200,7 @@ export const uploadAgreementToWalrus = async (
  */
 export const downloadAgreementFromWalrus = async (blobId: string): Promise<Uint8Array> => {
   try {
-    console.log(`Downloading file with blob ID: ${blobId} from Walrus...`);
+    // console.log(`Downloading file with blob ID: ${blobId} from Walrus...`);
     
     // Add validation for the blobId
     if (!blobId || typeof blobId !== 'string') {
@@ -215,15 +215,15 @@ export const downloadAgreementFromWalrus = async (blobId: string): Promise<Uint8
       throw new Error('Invalid or empty blob returned from Walrus');
     }
     
-    console.log(`File downloaded successfully (${blob.length} bytes)`);
+    // console.log(`File downloaded successfully (${blob.length} bytes)`);
     return blob;
   } catch (error) {
-    console.error('Error downloading file from Walrus:', error);
+    // console.error('Error downloading file from Walrus:', error);
     
     // For demo purposes, generate a mock PDF as a fallback
     // This ensures the UI can still demonstrate functionality
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.warn(`Generating fallback mock PDF data because: ${message}`);
+    // console.warn(`Generating fallback mock PDF data because: ${message}`);
     
     // Create a simple default PDF as fallback (minimum size PDF)
     return createFallbackPdf(`Error: ${message}`);
@@ -272,7 +272,7 @@ function createFallbackPdf(errorMessage: string): Uint8Array {
  */
 export const resetWalrusClient = () => {
   walrusClient.reset();
-  console.log('Walrus client has been reset');
+  // console.log('Walrus client has been reset');
 };
 
 export { walrusClient };

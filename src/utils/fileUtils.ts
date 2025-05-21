@@ -71,7 +71,7 @@ export const uint8ArrayToDataUrl = (data: Uint8Array, mimeType: string = 'applic
   try {
     // Check if the input data is too large
     if (data.length > 10 * 1024 * 1024) { // 10MB limit for safety
-      console.warn('Data is too large for data URL, truncating');
+      // console.warn('Data is too large for data URL, truncating');
       data = data.slice(0, 10 * 1024 * 1024);
     }
     
@@ -89,7 +89,7 @@ export const uint8ArrayToDataUrl = (data: Uint8Array, mimeType: string = 'applic
     // Use btoa for base64 encoding
     return `data:${mimeType};base64,${btoa(binary)}`;
   } catch (error) {
-    console.error('Error converting Uint8Array to data URL:', error);
+    // // console.error('Error converting Uint8Array to data URL:', error);
     
     // Fallback to a simpler method if the above fails
     try {
@@ -97,7 +97,7 @@ export const uint8ArrayToDataUrl = (data: Uint8Array, mimeType: string = 'applic
       const blobUrl = URL.createObjectURL(blob);
       return blobUrl;
     } catch (fallbackError) {
-      console.error('Fallback also failed:', fallbackError);
+      // // console.error('Fallback also failed:', fallbackError);
       return ''; // Return empty string as a last resort
     }
   }

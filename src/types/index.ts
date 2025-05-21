@@ -19,6 +19,8 @@ export interface SignerArea {
   value: number[]; // vector<u8>, signature hash or value
   signed: boolean;
   rejected: boolean;
+  fee_paid?: boolean; // Optional field for fee payment status
+  signature_blob_id?: string; // Walrus blob ID for this signature
 }
 
 // Agreement type from the smart contract

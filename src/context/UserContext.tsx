@@ -264,7 +264,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (isAuthKey && !event.newValue) {
         if (!validateSessionStorage()) {
           // Session is broken, log out
-          console.warn('Session data was modified or removed unexpectedly, logging out');
+          // console.warn('Session data was modified or removed unexpectedly, logging out');
           logout();
         }
       }

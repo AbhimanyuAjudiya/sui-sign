@@ -95,7 +95,7 @@ export class ZkLoginAccount {
 
         if (!proofResponse.ok) {
             const errorBody = await proofResponse.text();
-            console.error("Prover error response:", errorBody);
+            // console.error("Prover error response:", errorBody);
             throw new Error(`Failed to fetch ZK proof from prover: ${proofResponse.status} ${errorBody}`);
         }
         const zkProofResult = await proofResponse.json();
@@ -160,7 +160,7 @@ export const fetchZkLoginProver = async (
     });
     if (!response.ok) {
         const errorBody = await response.text();
-        console.error("Prover error response:", errorBody);
+        // console.error("Prover error response:", errorBody);
         throw new Error(`Failed to fetch ZK proof: ${response.status} ${errorBody}`);
     }
     return response.json();
@@ -179,13 +179,13 @@ const uint8ArrayToString = (arr: number[] | Uint8Array): string => {
 // Helper function to parse the raw Move object data into our Agreement type
 const parseAgreementObjectResponse = (response: any): Agreement | null => {
   if (!response || !response.data || !response.data.content || response.data.content.type !== `${PACKAGE_ID}::agreements::Agreement`) {
-    console.error('Invalid agreement object response:', response);
+    // console.error('Invalid agreement object response:', response);
     return null;
   }
 
   const fields = response.data.content.fields;
   if (!fields) {
-    console.error('No fields in agreement object response:', response);
+    // console.error('No fields in agreement object response:', response);
     return null;
   }
 
@@ -199,22 +199,39 @@ const parseAgreementObjectResponse = (response: any): Agreement | null => {
     case 3: status = AgreementStatus.EXPIRED; break;
     case 4: status = AgreementStatus.REJECTED; break;
     default:
-      console.warn(`Unknown agreement status value: ${statusValue}`);
+      // console.warn(`Unknown agreement status value: ${statusValue}`);
       status = AgreementStatus.DRAFT; // Fallback or handle as error
   }
   
-  const signerAreas: SignerArea[] = (fields.signer_areas || []).map((area: any) => ({
-    signer: area.fields.signer,
-    page: parseInt(area.fields.page, 10),
-    x: parseInt(area.fields.x, 10),
-    y: parseInt(area.fields.y, 10),
-    width: parseInt(area.fields.width, 10),
-    height: parseInt(area.fields.height, 10),
-    inputType: parseInt(area.fields.input_type, 10),
-    value: area.fields.value || [], // Assuming value is vector<u8> which might be empty
-    signed: area.fields.signed,
-    rejected: area.fields.rejected,
-  }));
+  const signerAreas: SignerArea[] = (fields.signer_areas || []).map((area: any) => {
+    // Safely extract fields with proper error handling
+    const areaFields = area.fields || {};
+    
+    // For signature_blob_id, convert from vector<u8> to string if present
+    let signatureBlobId: string | undefined;
+    if (areaFields.signature_blob_id && Array.isArray(areaFields.signature_blob_id)) {
+      try {
+        signatureBlobId = uint8ArrayToString(areaFields.signature_blob_id);
+      } catch (e) {
+        // console.warn('Error converting signature_blob_id to string:', e);
+      }
+    }
+    
+    return {
+      signer: areaFields.signer,
+      page: parseInt(areaFields.page, 10),
+      x: parseInt(areaFields.x, 10),
+      y: parseInt(areaFields.y, 10),
+      width: parseInt(areaFields.width, 10),
+      height: parseInt(areaFields.height, 10),
+      inputType: parseInt(areaFields.input_type, 10),
+      value: areaFields.value || [], // Assuming value is vector<u8> which might be empty
+      signed: areaFields.signed,
+      rejected: areaFields.rejected,
+      fee_paid: areaFields.fee_paid,
+      signature_blob_id: signatureBlobId,
+    };
+  });
 
   return {
     id: fields.id.id, // UID object's ID
@@ -265,7 +282,7 @@ export const getAgreements = async (client: SuiClient, userAddress?: string): Pr
 
     // Let's simulate fetching objects if we had their IDs.
     // This function would need to be adapted based on your indexing/discovery strategy.
-    console.warn("getAgreements: This function needs a proper way to discover shared agreement object IDs (e.g., via an indexer or event querying).");
+    // console.warn("getAgreements: This function needs a proper way to discover shared agreement object IDs (e.g., via an indexer or event querying).");
     
     // Example: If agreements are indexed and you get their IDs
     const exampleAgreementIds: string[] = []; // Populate this from your indexer or event store
@@ -293,7 +310,7 @@ export const getAgreements = async (client: SuiClient, userAddress?: string): Pr
     return agreements;
 
   } catch (error) {
-    console.error('Error fetching agreements:', error);
+    // console.error('Error fetching agreements:', error);
     return [];
   }
 };
@@ -306,7 +323,7 @@ export const getAgreementById = async (client: SuiClient, agreementId: string): 
     });
     return parseAgreementObjectResponse(response);
   } catch (error) {
-    console.error(`Error fetching agreement by ID ${agreementId}:`, error);
+    // console.error(`Error fetching agreement by ID ${agreementId}:`, error);
     return null;
   }
 };
@@ -370,20 +387,20 @@ export const createDraftAgreement = async (
       options: { showEffects: true, showObjectChanges: true },
     });
     
-    console.log('Create draft agreement transaction result:', result);
+    // console.log('Create draft agreement transaction result:', result);
     if (result.effects?.status.status === 'success') {
         const createdObject = result.effects.created?.find(
             (obj: any) => obj.owner === 'Shared' && obj.objectType?.includes(`${PACKAGE_ID}::agreements::Agreement`)
         );
         if (createdObject) {
-            console.log('New agreement created with ID:', createdObject.reference.objectId);
+            // console.log('New agreement created with ID:', createdObject.reference.objectId);
         }
         return result.digest;
     }
     return null;
 
   } catch (error) {
-    console.error('Error creating draft agreement:', error);
+    // console.error('Error creating draft agreement:', error);
     return null;
   }
 };
@@ -411,10 +428,10 @@ export const sendAgreement = async (
       signature: zkLoginSignature,
       options: { showEffects: true },
     });
-    console.log('Send agreement transaction result:', result);
+    // console.log('Send agreement transaction result:', result);
     return result.digest;
   } catch (error) {
-    console.error(`Error sending agreement ${agreementId}:`, error);
+    // console.error(`Error sending agreement ${agreementId}:`, error);
     return null;
   }
 };
@@ -436,7 +453,7 @@ export const getCoinForFee = async (
     });
 
     if (!coins.length) {
-      console.error('No SUI coins found for address:', address);
+      // console.error('No SUI coins found for address:', address);
       return undefined;
     }
 
@@ -459,10 +476,10 @@ export const getCoinForFee = async (
     // If no single coin has enough balance, we'll need to merge coins
     // This is more complex and requires a separate transaction
     // For simplicity, just report insufficient balance here
-    console.error('No single coin with sufficient balance found. Total required:', required.toString());
+    // console.error('No single coin with sufficient balance found. Total required:', required.toString());
     return undefined;
   } catch (error) {
-    console.error('Error finding coin for fee:', error);
+    // console.error('Error finding coin for fee:', error);
     return undefined;
   }
 };
@@ -477,18 +494,18 @@ export const payFee = async (
     // First fetch the treasury details to get the required fee amount
     const treasuryDetails = await getTreasuryDetails(client);
     if (!treasuryDetails) {
-      console.error('Failed to fetch treasury details');
+      // console.error('Failed to fetch treasury details');
       return null;
     }
     
     const feeAmount = BigInt(treasuryDetails.fee);
-    console.log(`Fee required: ${feeAmount.toString()} MIST`);
+    // console.log(`Fee required: ${feeAmount.toString()} MIST`);
     
     // If no specific coin ID was provided, try to find an appropriate coin
     if (!feeCoinObjectId) {
       feeCoinObjectId = await getCoinForFee(client, currentAccount.address, feeAmount);
       if (!feeCoinObjectId) {
-        console.error('Could not find a suitable coin for fee payment');
+        // console.error('Could not find a suitable coin for fee payment');
         return null;
       }
     }
@@ -496,37 +513,33 @@ export const payFee = async (
     const tx = new Transaction();
     tx.setSender(currentAccount.address);
     
-    // Get the coin details to check its balance
-    const coinResponse = await client.getObject({
-      id: feeCoinObjectId,
-      options: { showContent: true }
-    });
-    
-    // Parse the coin balance - the exact path will depend on the API response structure
+    // Get the coin balance using getCoins API which is more reliable across SDK versions
     let coinBalance: bigint;
     try {
-      // Safely navigate to balance, handling different possible response structures
-      const content = coinResponse.data?.content;
-      if (content && 'dataType' in content && content.dataType === 'moveObject') {
-        // Access fields based on SDK's actual response structure
-        const balanceStr = content.fields?.balance;
-        if (balanceStr) {
-          coinBalance = BigInt(balanceStr);
-        } else {
-          throw new Error('Balance field not found in coin object');
-        }
+      const { data: coinDetails } = await client.getCoins({
+        owner: currentAccount.address,
+        coinType: '0x2::sui::SUI',
+      });
+      
+      // Find the specific coin we're looking for
+      const coin = coinDetails.find(c => c.coinObjectId === feeCoinObjectId);
+      
+      if (coin) {
+        coinBalance = BigInt(coin.balance);
+        // console.log(`Coin ${feeCoinObjectId} has balance: ${coinBalance.toString()}`);
       } else {
-        throw new Error('Invalid coin content structure');
+        // console.error(`Coin ${feeCoinObjectId} not found in user's coins`);
+        return null;
       }
     } catch (error) {
-      console.error('Error parsing coin balance:', error);
+      // console.error('Error getting coin balance:', error);
       return null;
     }
     
     let coinArg;
     // If coin has more than needed, split it
     if (coinBalance > feeAmount) {
-      console.log('Splitting coin to exact fee amount');
+      // console.log('Splitting coin to exact fee amount');
       // Use tx.pure.u64 instead of the two-parameter form
       const [feeCoin] = tx.splitCoins(tx.object(feeCoinObjectId), [tx.pure.u64(feeAmount)]);
       coinArg = feeCoin; // Use the split coin
@@ -554,10 +567,10 @@ export const payFee = async (
       options: { showEffects: true, showBalanceChanges: true },
     });
     
-    console.log('Pay fee transaction result:', result);
+    // console.log('Pay fee transaction result:', result);
     return result.digest;
   } catch (error) {
-    console.error(`Error paying fee for agreement ${agreementId}:`, error);
+    // console.error(`Error paying fee for agreement ${agreementId}:`, error);
     return null;
   }
 };
@@ -567,7 +580,8 @@ export const signArea = async (
   currentAccount: ZkLoginAccount, 
   agreementId: string,
   areaIndex: number,
-  signatureHash: number[] 
+  signatureHash: number[],
+  signatureBlobId: string 
 ): Promise<string | null> => {
   try {
     const tx = new Transaction();
@@ -578,6 +592,7 @@ export const signArea = async (
         tx.object(agreementId),
         tx.pure.u64(areaIndex),
         tx.pure.vector('u8', signatureHash),
+        tx.pure.vector('u8', stringToUint8Array(signatureBlobId)),
         tx.object.clock(),
       ],
     });
@@ -589,10 +604,10 @@ export const signArea = async (
       signature: zkLoginSignature,
       options: { showEffects: true },
     });
-    console.log('Sign area transaction result:', result);
+    // console.log('Sign area transaction result:', result);
     return result.digest;
   } catch (error) {
-    console.error(`Error signing area ${areaIndex} for agreement ${agreementId}:`, error);
+    // console.error(`Error signing area ${areaIndex} for agreement ${agreementId}:`, error);
     return null;
   }
 };
@@ -622,10 +637,10 @@ export const rejectAgreement = async (
       signature: zkLoginSignature,
       options: { showEffects: true },
     });
-    console.log('Reject agreement transaction result:', result);
+    // console.log('Reject agreement transaction result:', result);
     return result.digest;
   } catch (error) {
-    console.error(`Error rejecting agreement ${agreementId} for area ${areaIndex}:`, error);
+    // console.error(`Error rejecting agreement ${agreementId} for area ${areaIndex}:`, error);
     return null;
   }
 };
@@ -653,10 +668,10 @@ export const expireAgreement = async (
       signature: zkLoginSignature,
       options: { showEffects: true },
     });
-    console.log('Expire agreement transaction result:', result);
+    // console.log('Expire agreement transaction result:', result);
     return result.digest;
   } catch (error) {
-    console.error(`Error expiring agreement ${agreementId}:`, error);
+    // console.error(`Error expiring agreement ${agreementId}:`, error);
     return null;
   }
 };
@@ -686,10 +701,10 @@ export const withdrawFromTreasury = async (
       signature: zkLoginSignature,
       options: { showEffects: true },
     });
-    console.log('Withdraw from treasury transaction result:', result);
+    // console.log('Withdraw from treasury transaction result:', result);
     return result.digest;
   } catch (error) {
-    console.error('Error withdrawing from treasury:', error);
+    // console.error('Error withdrawing from treasury:', error);
     return null;
   }
 };
@@ -718,10 +733,10 @@ export const updateFee = async (
       signature: zkLoginSignature,
       options: { showEffects: true },
     });
-    console.log('Update fee transaction result:', result);
+    // console.log('Update fee transaction result:', result);
     return result.digest;
   } catch (error) {
-    console.error('Error updating fee:', error);
+    // console.error('Error updating fee:', error);
     return null;
   }
 };
@@ -737,10 +752,10 @@ export const getTreasuryDetails = async (client: SuiClient) => {
     if (response && response.data && response.data.content && response.data.content.dataType === 'moveObject') {
       return response.data.content.fields as { id: { id: string }, admin: string, fee: string, balance: { value: string, type: string } }; // Adjust types as per actual Treasury struct fields
     }
-    console.warn('Treasury object content not found or not a Move object:', response);
+    // console.warn('Treasury object content not found or not a Move object:', response);
     return null;
   } catch (error) {
-    console.error('Error fetching treasury details:', error);
+    // console.error('Error fetching treasury details:', error);
     return null;
   }
 };

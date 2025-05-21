@@ -14,6 +14,7 @@ import Callback from './pages/Callback';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 import Drafts from './pages/Drafts';
+import Index from './pages/Index';
 
 function App() {
   // Initialize debugger on app start
@@ -31,7 +32,7 @@ function App() {
                          localStorage.getItem('user');
       // If we're in development mode, log session health
       if (import.meta.env.DEV) {
-        console.log(`Session health check: ${hasSession ? 'Healthy' : 'Unhealthy'}`);
+        // console.log(`Session health check: ${hasSession ? 'Healthy' : 'Unhealthy'}`);
       }
       // Keep alive - just accessing localStorage helps ensure the session state stays in memory
       if (hasSession) {
@@ -60,6 +61,7 @@ function App() {
           <Navbar />
           <main>
             <Routes>
+              <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/callback" element={<Callback />} />
               <Route 
@@ -118,7 +120,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              {/* <Route path="/" element={<Navigate to="/login" replace />} /> */}
             </Routes>
           </main>
         </div>

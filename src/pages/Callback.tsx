@@ -155,7 +155,7 @@ const Callback = () => {
         // Verify session integrity
         const verification = newAccount.validateSession();
         if (!verification) {
-          console.warn('Session validation failed. Session may not persist correctly.');
+          // console.warn('Session validation failed. Session may not persist correctly.');
         }
         
         // Double-check data exists in localStorage before redirecting
@@ -165,9 +165,9 @@ const Callback = () => {
         const hasKeyPair = !!localStorage.getItem('ephemeralSeed');
         
         if (!hasUser || !hasJwt || !hasSalt || !hasKeyPair) {
-          console.warn('Missing critical session data:', {
-            hasUser, hasJwt, hasSalt, hasKeyPair
-          });
+          // console.warn('Missing critical session data:', {
+          //   hasUser, hasJwt, hasSalt, hasKeyPair
+          // });
         }
         
         debugStorage();

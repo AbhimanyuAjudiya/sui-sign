@@ -1,5 +1,5 @@
-export const PACKAGE_ID = "0xcca3a043ab541c9aa1d40dd1366f68e3835d095da10d4a55ce99bdbdf33d0364";
-export const TREASURY_ID = "0x1b256d50c31a5073d81dd33842c0860e7f146890d4bf9aa69bfe1eaa6536e007";
+export const PACKAGE_ID = "0x88d186e386af3834ce4344041283a95cf192520f40b11a951d90c4044f093d07";
+export const TREASURY_ID = "0x41629be1964c554f08c7d0c62941742247e987014079cb9cf82be9b0fc5326bd";
 
 // Add other environment-specific or constant values here
 // For example, the SUI Clock object ID, if you're not passing it dynamically

@@ -32,7 +32,7 @@ class SessionEventEmitter {
       try {
         listener(event);
       } catch (error) {
-        console.error('Error in storage event listener:', error);
+        // console.error('Error in storage event listener:', error);
       }
     });
   }
@@ -126,6 +126,6 @@ export function touchSession(): void {
       localStorage.setItem('zklogin-jwt', jwt);
     }
   } catch (error) {
-    console.error('Error touching session:', error);
+    // console.error('Error touching session:', error);
   }
 }

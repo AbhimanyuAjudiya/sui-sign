@@ -23,14 +23,16 @@ const Dashboard: React.FC = () => {
     
     try {
       setIsLoading(true);
-      console.log('Loading agreements for user:', user.address);
+      // console.log('Loading agreements for user:', user.address);
       const userAgreements = await fetchAgreementsForUser(user.address);
-      console.log('Loaded agreements:', userAgreements.length);
+      // console.log('Loaded agreements:', userAgreements.length);
       setAgreements(userAgreements);
       setLastRefresh(new Date());
     } catch (error) {
-      console.error('Error fetching agreements:', error);
-      setAgreements([]);
+      // console.error('Error fetching agreements:', error);
+      setAgreements([]); // Set to empty array on error
+      // Optionally, set an error state to display to the user
+      // setError("Failed to load agreements. Please try refreshing.");
     } finally {
       setIsLoading(false);
     }

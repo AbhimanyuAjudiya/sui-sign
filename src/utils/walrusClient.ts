@@ -17,7 +17,7 @@
  */
 export const initializeWalrusClient = (network: string) => {
   try {
-    console.log(`Initializing Walrus SDK on ${network}...`);
+    // // console.log(`Initializing Walrus SDK on ${network}...`);
     
     // This would be replaced with the actual SDK in production
     // return new WalrusClient({ 
@@ -29,7 +29,7 @@ export const initializeWalrusClient = (network: string) => {
     const { walrusClient } = require('../services/walrusService');
     return walrusClient;
   } catch (error) {
-    console.error('Failed to initialize Walrus SDK:', error);
+    // console.error('Failed to initialize Walrus SDK:', error);
     throw error;
   }
 };
@@ -73,7 +73,7 @@ export const uploadToWalrus = async (
     
     return blobId;
   } catch (error) {
-    console.error('Error uploading to Walrus:', error);
+    // console.error('Error uploading to Walrus:', error);
     throw error;
   }
 };
@@ -91,7 +91,7 @@ export const downloadFromWalrus = async (blobId: string): Promise<Uint8Array> =>
     // Download from Walrus
     return await walrusClient.readBlob({ blobId });
   } catch (error) {
-    console.error('Error downloading from Walrus:', error);
+    // console.error('Error downloading from Walrus:', error);
     throw error;
   }
 };

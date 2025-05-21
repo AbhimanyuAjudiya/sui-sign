@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Search, Send as SendIcon, Upload, FileText, X, Trash2, UserPlus, UserCircle2 } from 'lucide-react';
 import { pdfjs } from 'react-pdf';
+import { resolveDocumentUrl, isWalrusBlob } from '../utils/resolveWalrusUrl';
 import PageContainer from '../components/Layout/PageContainer';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -88,7 +89,8 @@ const Send: React.FC = () => {
         );
         setDraftAgreements(drafts);
       } catch (error) {
-        console.error('Error fetching draft agreements:', error);
+        // console.error('Error fetching draft agreements:', error);
+        setError('Failed to fetch draft agreements. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -162,7 +164,7 @@ const Send: React.FC = () => {
     try {
       // Validate area dimensions
       if (area.width < 10 || area.height < 10) {
-        console.warn("Signature area too small, ignoring", area);
+        // console.warn("Signature area too small, ignoring", area);
         return;
       }
       
@@ -178,7 +180,7 @@ const Send: React.FC = () => {
       const signerIndex = updatedSigners.findIndex(s => s.id === signerId);
       
       if (signerIndex === -1) {
-        console.error("Signer not found with ID:", signerId);
+        // console.error("Signer not found with ID:", signerId);
         return;
       }
       
@@ -194,14 +196,15 @@ const Send: React.FC = () => {
       updatedSigners[signerIndex].signatureAreas.push(areaToAdd);
       setSigners(updatedSigners);
     } catch (error) {
-      console.error("Error adding signature area:", error);
+      // console.error("Error adding signature area:", error);
+      setError('Could not add signature area. Please try again.');
     }
   };
   
   // Handle removing a signature area
   const handleRemoveSignatureArea = (signerIndex: number, areaIndex: number) => {
     if (signerIndex < 0 || signerIndex >= signers.length) {
-      console.error("Invalid signer index:", signerIndex);
+      // console.error("Invalid signer index:", signerIndex);
       return;
     }
     
@@ -210,7 +213,7 @@ const Send: React.FC = () => {
       const signerAreas = updatedSigners[signerIndex].signatureAreas;
       
       if (areaIndex < 0 || areaIndex >= signerAreas.length) {
-        console.error("Invalid area index:", areaIndex);
+        // console.error("Invalid area index:", areaIndex);
         return;
       }
       
@@ -221,7 +224,8 @@ const Send: React.FC = () => {
       
       setSigners(updatedSigners);
     } catch (error) {
-      console.error("Error removing signature area:", error);
+      // console.error("Error removing signature area:", error);
+      setError('Could not remove signature area.');
     }
   };
   
@@ -313,12 +317,60 @@ const Send: React.FC = () => {
       );
       
       // Add signers and signature areas
-      // This would normally be part of createAgreement but we're simulating it here
-      console.log('Created agreement with signers:', signers);
+      // Collect all signature areas for all signers
+      let allSignatureAreas: any[] = [];
+      let allRecipients: string[] = [];
+
+      for (const signer of signers) {
+        let recipientAddress = signer.email;
+        if (signer.email.includes('@')) {
+          const resolvedAddress = await resolveGmailToSuiAddress(signer.email);
+          if (!resolvedAddress) {
+            setError(`Could not resolve email to a Sui address: ${signer.email}`);
+            setIsUploading(false);
+            return;
+          }
+          recipientAddress = resolvedAddress;
+        }
+        allRecipients.push(recipientAddress);
+
+        const signatureAreas = signer.signatureAreas.map(area => ({
+          signer: recipientAddress,
+          page: area.page,
+          x: area.x,
+          y: area.y,
+          width: area.width,
+          height: area.height,
+          inputType: 0,
+          value: [],
+          signed: false,
+          rejected: false
+        }));
+        allSignatureAreas = [...allSignatureAreas, ...signatureAreas];
+      }
+
+      // Send agreement to add signature areas
+      if (allSignatureAreas.length > 0) {
+        const success = await sendAgreement(
+          agreementId,
+          allRecipients[0], // Use first recipient as main recipient for legacy compatibility
+          user.address,
+          expiryDate,
+          allSignatureAreas
+        );
+        
+        if (!success) {
+          setError('Failed to add signers to agreement.');
+          setIsUploading(false);
+          return;
+        }
+      }
+      
+      // console.log('Created agreement with signers:', signers);
       
       navigate(`/agreement/${agreementId}`);
     } catch (error) {
-      console.error('Error creating agreement:', error);
+      // console.error('Error creating agreement:', error);
       setError('Failed to create agreement. Please try again.');
     } finally {
       setIsUploading(false);
@@ -383,7 +435,7 @@ const Send: React.FC = () => {
 
       navigate('/dashboard');
     } catch (error) {
-      console.error('Error sending agreement:', error);
+      // console.error('Error sending agreement:', error);
       setError('An error occurred while sending the agreement.');
     } finally {
       setIsSending(false);
@@ -756,7 +808,7 @@ const Send: React.FC = () => {
                             const selectedFile = e.target.files?.[0];
                             if (selectedFile) {
                               setFile(selectedFile);
-                              console.log("File selected:", selectedFile.name);
+                              // console.log("File selected:", selectedFile.name);
                             }
                             // Always reset input value so the same file can be selected again
                             if (fileInputRef.current) fileInputRef.current.value = '';

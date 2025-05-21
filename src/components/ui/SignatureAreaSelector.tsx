@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 // @ts-expect-error - No types available for fabric
 import { fabric } from 'fabric';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { isWalrusBlob, createDocumentLoader } from '../../utils/resolveWalrusUrl';
 
 // Initialize PDF.js worker if not already initialized
 if (!pdfjs.GlobalWorkerOptions.workerSrc) {
@@ -184,14 +185,21 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
     // Handle documentUrl from existing agreements
     if (documentUrl && !documentFile) {
       setDocumentLoaded(false);
-      console.log('Loading document from URL:', documentUrl);
+      // console.log('Loading document from URL:', documentUrl);
       
-      // For PDF URLs
-      if (documentUrl.toLowerCase().endsWith('.pdf')) {
-        // PDF handling is done through the Document component
-        console.log('PDF document will be loaded by Document component');
+      // Check if the documentUrl is a Walrus blob ID
+      if (documentUrl.startsWith('walrus-')) {
+        // console.log('Detected Walrus blob ID:', documentUrl);
+        
+        // We'll handle Walrus blobs through the Document component
+        // This will be passed to our modified Document component that knows how to handle Walrus blob IDs
+        // console.log('Walrus document will be loaded by Document component');
+        
+      } else if (documentUrl.toLowerCase().endsWith('.pdf')) {
+        // Regular PDF URLs are handled through the Document component
+        // console.log('PDF document will be loaded by Document component');
       } else {
-        // For image URLs
+        // For image URLs (that are not Walrus blob IDs)
         fabric.Image.fromURL(
           documentUrl,
           (img: fabric.Image) => {
@@ -201,7 +209,7 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
             }
             
             if (!img || !img.width || !img.height) {
-              console.error('Failed to load image from URL:', documentUrl);
+              // console.error('Failed to load image from URL:', documentUrl);
               setDocumentLoaded(true);
               return;
             }
@@ -224,7 +232,7 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
             });
           },
           { crossOrigin: 'Anonymous', onerror: () => {
-            console.error('Error loading image from URL:', documentUrl);
+            // console.error('Error loading image from URL:', documentUrl);
             setDocumentLoaded(true);
           }}
         );
@@ -473,17 +481,18 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         )}
-        {(documentFile && documentFile.type === 'application/pdf') || (documentUrl && documentUrl.toLowerCase().endsWith('.pdf')) ? (
+        {(documentFile && documentFile.type === 'application/pdf') || 
+         (documentUrl && (documentUrl.toLowerCase().endsWith('.pdf') || isWalrusBlob(documentUrl))) ? (
           <div className="w-full flex justify-center">
             <Document
-              file={documentFile || documentUrl}
+              file={documentFile || (documentUrl ? createDocumentLoader(documentUrl) : undefined)}
               onLoadSuccess={({ numPages }) => { 
                 setNumPages(numPages); 
                 setDocumentLoaded(true); 
-                console.log(`PDF loaded successfully with ${numPages} pages`);
+                // console.log(`PDF loaded successfully with ${numPages} pages`);
               }}
               onLoadError={(error) => {
-                console.error('Error loading PDF:', error);
+                // console.error('Error loading PDF:', error);
                 setDocumentLoaded(true);
               }}
               loading={<div className="flex justify-center items-center h-full"><p className="text-gray-500">Loading PDF...</p></div>}
@@ -496,10 +505,10 @@ const SignatureAreaSelector: React.FC<SignatureAreaSelectorProps> = ({
                 renderTextLayer={false}
                 className="pdf-page"
                 onRenderSuccess={() => {
-                  console.log(`Page ${currentPage} rendered successfully`);
+                  // console.log(`Page ${currentPage} rendered successfully`);
                 }}
                 onRenderError={(error) => {
-                  console.error(`Error rendering page ${currentPage}:`, error);
+                  // console.error(`Error rendering page ${currentPage}:`, error);
                 }}
               />
             </Document>

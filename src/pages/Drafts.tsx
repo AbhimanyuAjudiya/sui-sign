@@ -14,25 +14,63 @@ const Drafts: React.FC = () => {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const loadDrafts = useCallback(async () => {
-    if (!user?.address) return;
+    if (!user?.address) {
+      // console.log('No user address available, cannot load drafts');
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      console.log('Fetching agreements for user:', user.address);
+      // console.log('Fetching agreements for user:', user.address);
       const agreements = await fetchAgreementsForUser(user.address);
-      console.log('Agreements fetched:', agreements.length);
+      // console.log('Agreements fetched:', agreements.length);
+      
+      // Log all agreements received to help debug
+      // if (agreements.length > 0) {
+      //   console.log('All agreements details:', agreements.map(a => ({
+      //     id: a.id,
+      //     title: a.title,
+      //     creator: a.creator,
+      //     status: a.status,
+      //     createdAt: new Date(a.createdAt).toLocaleString()
+      //   })));
+      // }
       
       // Filter for draft agreements created by this user
-      const userDrafts = agreements.filter(a => 
-        a.status === AgreementStatus.DRAFT && 
-        (a.creator === user.address || a.creator === 'ANY_ADDRESS')
-      );
+      const userDrafts = agreements.filter(a => {
+        const isDraft = a.status === AgreementStatus.DRAFT;
+        const isCreator = a.creator === user.address;
+        const isDefaultCreator = a.creator === 'ANY_ADDRESS'; // Assuming this is a placeholder
+        
+        // if (isDraft) {
+        //   console.log(`Agreement ${a.id} is a DRAFT`);
+        // }
+        
+        // if (isCreator) {
+        //   console.log(`Agreement ${a.id} - user ${user.address} is the creator`);
+        // }
+        
+        return isDraft && (isCreator || isDefaultCreator);
+      });
       
-      console.log('User drafts found:', userDrafts.length);
+      // console.log('User drafts found:', userDrafts.length);
+      // if (userDrafts.length > 0) {
+      //   console.log('Draft details:', userDrafts.map(d => ({
+      //     id: d.id,
+      //     title: d.title,
+      //     creator: d.creator,
+      //     createdAt: new Date(d.createdAt).toLocaleString()
+      //   })));
+      // }
+      
       setDrafts(userDrafts);
       setLastRefresh(new Date());
     } catch (e) {
-      console.error('Error loading drafts:', e);
+      // console.error('Error loading drafts:', e);
+      // console.error('Error details:', e); // Keep this if it provides more specific info
       setDrafts([]);
+      // Optionally set an error state to display to the user
+      // setError("Failed to load drafts. Please try refreshing.");
     } finally {
       setIsLoading(false);
     }

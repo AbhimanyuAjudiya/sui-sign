@@ -30,39 +30,39 @@ const AgreementDetails: React.FC = () => {
         setIsLoading(true);
         setError(null); // Clear any existing errors when loading
         
-        console.log('Fetching agreement:', id);
+        // console.log('Fetching agreement:', id);
         const agreementData = await fetchAgreementById(id);
         
         if (!agreementData) {
-          console.error('Agreement not found with ID:', id);
+          // console.error('Agreement not found with ID:', id);
           setError('Agreement not found.');
           return;
         }
         
-        console.log('Agreement data loaded:', agreementData);
+        // console.log('Agreement data loaded:', agreementData);
         setAgreement(agreementData);
         
         // Try to load the document preview
         if (agreementData.fileHash) {
           try {
-            console.log('Loading document preview for hash:', agreementData.fileHash);
+            // console.log('Loading document preview for hash:', agreementData.fileHash);
             const dataUrl = await getDocumentDataUrl(agreementData.fileHash);
             
             if (dataUrl) {
-              console.log('Document preview loaded successfully');
+              // console.log('Document preview loaded successfully');
               setDocumentDataUrl(dataUrl);
             } else {
-              console.warn('Empty data URL returned for document preview');
+              // console.warn('Empty data URL returned for document preview');
             }
           } catch (err) {
-            console.error('Error loading document preview:', err);
+            // console.error('Error loading document preview:', err);
             // Don't set an error here, just show fallback UI
           }
         } else {
-          console.warn('No fileHash available for document preview');
+          // console.warn('No fileHash available for document preview');
         }
       } catch (error) {
-        console.error('Error fetching agreement:', error);
+        // console.error('Error fetching agreement:', error);
         setError('Failed to load agreement. Please try again.');
       } finally {
         setIsLoading(false);
@@ -84,7 +84,7 @@ const AgreementDetails: React.FC = () => {
       }
       
       const fileName = agreement.fileName || `agreement-${agreement.id}.pdf`;
-      console.log(`Attempting to download document: ${fileName} (${agreement.fileHash})`);
+      // console.log(`Attempting to download document: ${fileName} (${agreement.fileHash})`);
       
       await downloadDocument(
         agreement.fileHash, 
@@ -92,9 +92,9 @@ const AgreementDetails: React.FC = () => {
       );
       
       // Show success message (could use a toast notification in a real app)
-      console.log('Document downloaded successfully');
+      // console.log('Document downloaded successfully');
     } catch (error) {
-      console.error('Download error:', error);
+      // console.error('Download error:', error);
       // Show friendly error message
       const errorMessage = error instanceof Error 
         ? error.message 
@@ -167,6 +167,16 @@ const AgreementDetails: React.FC = () => {
     return agreement.expiresAt < Date.now();
   };
 
+  // Add helper functions to check signature status
+  const hasUserSigned = (address: string | undefined): boolean => {
+    if (!agreement || !address) return false;
+    
+    // Check if the user is in any of the signer_areas and has signed
+    return agreement.signer_areas.some(area => 
+      area.signer === address && area.signed
+    );
+  };
+  
   if (isLoading) {
     return (
       <PageContainer title="Agreement Details">
@@ -240,7 +250,7 @@ const AgreementDetails: React.FC = () => {
                   title="Document Preview"
                   className="w-full h-full"
                   onError={(e) => {
-                    console.error('Error loading document in iframe:', e);
+                    // console.error('Error loading document in iframe:', e);
                     // Clear the data URL to show the fallback UI
                     setDocumentDataUrl(null);
                   }}
@@ -276,12 +286,14 @@ const AgreementDetails: React.FC = () => {
                     <p className="text-xs text-gray-500">{agreement.creator}</p>
                   </div>
                 </div>
-                {agreement.signedByCreator ? (
+                {hasUserSigned(agreement.creator) ? (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
                     <CheckCircle size={12} className="mr-1" />Signed
                   </span>
                 ) : (
-                  <span className="text-xs text-gray-500">Not signed</span>
+                  agreement.status !== AgreementStatus.DRAFT && (
+                    <span className="text-xs text-gray-500">Not required</span>
+                  )
                 )}
               </div>
               
@@ -296,9 +308,13 @@ const AgreementDetails: React.FC = () => {
                       <p className="text-xs text-gray-500">{agreement.recipient}</p>
                     </div>
                   </div>
-                  {agreement.signedByRecipient ? (
+                  {hasUserSigned(agreement.recipient) ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
                       <CheckCircle size={12} className="mr-1" />Signed
+                    </span>
+                  ) : agreement.status === AgreementStatus.REJECTED ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error-100 text-error-800">
+                      Rejected
                     </span>
                   ) : (
                     <span className="text-xs text-gray-500">Awaiting signature</span>
@@ -306,6 +322,40 @@ const AgreementDetails: React.FC = () => {
                 </div>
               )}
             </div>
+            
+            {/* Now list all signers from signer_areas for completeness */}
+            {agreement.signer_areas && agreement.signer_areas.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-md font-medium text-gray-700 mb-2">Signature Areas</h4>
+                <div className="space-y-2">
+                  {agreement.signer_areas.map((area, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                      <div className="flex items-center">
+                        <User className="h-5 w-5 text-gray-400 mr-3" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {area.signer === user?.address ? 'You (Signer)' : `Signer ${index + 1}`}
+                          </p>
+                          <p className="text-xs text-gray-500">{area.signer}</p>
+                          <p className="text-xs text-gray-400">Page {area.page}, Position: {area.x},{area.y}</p>
+                        </div>
+                      </div>
+                      {area.signed ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
+                          <CheckCircle size={12} className="mr-1" />Signed
+                        </span>
+                      ) : area.rejected ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error-100 text-error-800">
+                          Rejected
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500">Awaiting signature</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <div className="mt-6 pt-6 border-t border-gray-200">
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">

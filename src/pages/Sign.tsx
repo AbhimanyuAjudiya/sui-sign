@@ -57,13 +57,14 @@ const Sign: React.FC = () => {
             const url = await getAgreementFileDataUrl(agreementData.fileHash);
             setPdfUrl(url);
           } catch (err) {
+            // console.error('Failed to load document from storage:', err);
             setPdfError('Failed to load document from storage.');
           } finally {
             setPdfLoading(false);
           }
         }
       } catch (error) {
-        console.error('Error fetching agreement:', error);
+        // console.error('Error fetching agreement:', error);
         setError('Failed to load agreement.');
       } finally {
         setIsLoading(false);
@@ -110,18 +111,69 @@ const Sign: React.FC = () => {
     try {
       setIsSigning(true);
       setError(null);
-      // For each area, sign with the current signature
+      
+      // First, upload the signature to Walrus storage
+      let signatureBlobId = '';
+      
+      try {
+        // If it's a draw or upload signature, upload to Walrus
+        if (signatureType === 'draw' || signatureType === 'upload') {
+          // console.log('Uploading signature to Walrus storage...');
+          
+          // Convert the signature data URL to a blob
+          const signatureBlob = await (async () => {
+            const res = await fetch(activeSignature);
+            return await res.blob();
+          })();
+          
+          // Upload to Walrus (using uploadToWalrus from walrusClient.ts)
+          const signatureFile = new File([signatureBlob], 'signature.png', { type: 'image/png' });
+          
+          // In a real app with actual zkLogin, this would use the current user's account
+          // For demo, we'll use a simulated upload since we don't have a real zkLogin account
+          const { uploadFileToWalrus } = await import('../utils/suiClient');
+          signatureBlobId = await uploadFileToWalrus(signatureFile);
+          
+          // console.log(`Signature uploaded to Walrus with blob ID: ${signatureBlobId}`);
+        } else if (signatureType === 'text') {
+          // For text signatures, create a simple blob ID (in a real app, this might be a rendered image)
+          signatureBlobId = `walrus-text-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+        }
+      } catch (uploadError) {
+        // console.error('Error uploading signature to Walrus:', uploadError);
+        setError('Failed to upload signature. Please try again.');
+        setIsSigning(false);
+        return;
+      }
+      
+      // Now sign all areas for this user using the updated signAgreement function
+      // which should properly handle the signature_blob_id parameter
       for (const area of userAreas) {
+        // In a real app with actual zkLogin integration, we would use:
+        // import { suiClient } from '../utils/suiClient';
+        // import { signArea } from '../services/suiService';
+        // const zkLoginAccount = ... (get from user context)
+        // const areaIdx = agreement.signer_areas.findIndex(a => a === area);
+        // const signatureHash = Array.from(new TextEncoder().encode(activeSignature));
+        // await signArea(suiClient, zkLoginAccount, agreement.id, areaIdx, signatureHash, signatureBlobId);
+        
+        // For the mock implementation, continue using signAgreement
         await signAgreement(agreement.id, user.address, {
           dataUrl: signatureType === 'draw' || signatureType === 'upload' ? activeSignature : undefined,
           text: signatureType === 'text' ? activeSignature : undefined,
           areaIdx: agreement.signer_areas.findIndex(a => a === area),
           position: { x: area.x, y: area.y },
           page: area.page,
+          signatureBlobId, // Pass the blob ID to the mock function
         });
+        
+        // console.log(`Signed area with blob ID: ${signatureBlobId}`);
       }
+      
+      // Show success message and navigate back to dashboard
       setTimeout(() => navigate('/dashboard'), 2000);
     } catch (error) {
+      // console.error('Error signing agreement:', error);
       setError('An error occurred while confirming the agreement.');
     } finally {
       setIsSigning(false);
@@ -233,14 +285,12 @@ const Sign: React.FC = () => {
                   file={pdfUrl}
                   onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                   className="border rounded-lg overflow-hidden"
-                  options={{ disableTextLayer: true, disableAnnotationLayer: true }}
+                  options={{ cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/', cMapPacked: true }}
                 >
                   <Page
                     pageNumber={currentPage}
                     width={800}
                     className="mx-auto"
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
                   />
                   {/* Overlay signature(s) on all user areas for this page */}
                   {userAreas.filter(area => area.page === currentPage).map((area, idx) => (

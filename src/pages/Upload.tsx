@@ -167,7 +167,13 @@ const Upload: React.FC = () => {
     if (!validate() || !user || !file) return;
     try {
       setIsSubmitting(true);
+      // console.log("Creating agreement...");
+      
+      // First upload the file
       const fileHash = await uploadFileToWalrus(file);
+      // console.log("File uploaded to Walrus, hash:", fileHash);
+      
+      // Create the agreement
       const agreementId = await createAgreement(
         title,
         description,
@@ -175,9 +181,52 @@ const Upload: React.FC = () => {
         user.address,
         expiryDate
       );
-      // Optionally, save signers/signature areas to agreement if your backend supports it
+      
+      // console.log("Agreement created with ID:", agreementId);
+      
+      // Now add signature areas for all signers
+      // Import the sendAgreement function
+      const { sendAgreement } = await import('../utils/suiClient');
+      
+      // Collect all signature areas
+      const allSignatureAreas = signers.flatMap(signer => 
+        signer.signatureAreas.map(area => ({
+          signer: signer.email, // This should be resolved to a Sui address for production
+          page: area.page,
+          x: area.x,
+          y: area.y,
+          width: area.width,
+          height: area.height,
+          inputType: 0,
+          value: [],
+          signed: false,
+          rejected: false
+        }))
+      );
+      
+      if (allSignatureAreas.length > 0) {
+        // Get the first signer email as the main recipient
+        const mainRecipient = signers[0].email;
+        
+        // console.log("Sending agreement with signature areas:", allSignatureAreas);
+        
+        const success = await sendAgreement(
+          agreementId,
+          mainRecipient,
+          user.address,
+          expiryDate,
+          allSignatureAreas
+        );
+        
+        if (!success) {
+          throw new Error("Failed to add signature areas to agreement");
+        }
+      }
+      
+      // console.log("Agreement created successfully:", agreementId);
       navigate(`/agreement/${agreementId}`);
     } catch (error) {
+      // console.error("Error creating agreement:", error);
       setErrors({ submit: 'Failed to create agreement. Please try again.' });
     } finally {
       setIsSubmitting(false);
@@ -222,12 +271,10 @@ const Upload: React.FC = () => {
                     value={expiryDate}
                     onChange={(e) => setExpiryDate(e.target.value)}
                     className={`w-full px-3 py-2 border ${errors.expiryDate ? 'border-error-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date().toISOString().split('T')[0]} // Ensure date is not in the past
                     required
                   />
-                  {errors.expiryDate && (
-                    <p className="mt-1 text-sm text-error-600">{errors.expiryDate}</p>
-                  )}
+                  {errors.expiryDate && <p className="text-xs text-red-500 mt-1">{errors.expiryDate}</p>}
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -389,7 +436,7 @@ const Upload: React.FC = () => {
                         const selectedFile = e.target.files?.[0];
                         if (selectedFile) {
                           setFile(selectedFile);
-                          console.log("File selected in upload area:", selectedFile.name);
+                          // console.log("File selected in upload area:", selectedFile.name);
                         }
                         if (fileInputRef.current) fileInputRef.current.value = '';
                       }}
