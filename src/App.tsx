@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import { setupDebugger } from './utils/debug';
 import { setupSessionMonitoring, touchSession } from './utils/sessionMonitor';
@@ -16,7 +16,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Drafts from './pages/Drafts';
 import Index from './pages/Index';
 
-function App() {
+// Create a wrapper component to conditionally render the Navbar
+const AppContent = () => {
+  const location = useLocation();
+  
+  // Don't show navbar on the Index page
+  const isIndexPage = location.pathname === '/';
+  
   // Initialize debugger on app start
   useEffect(() => {
     setupDebugger();
@@ -55,75 +61,82 @@ function App() {
   }, []);
 
   return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Only show Navbar if not on the index page */}
+      {!isIndexPage && <Navbar />}
+      <main>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/callback" element={<Callback />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/upload" 
+            element={
+              <ProtectedRoute>
+                <Upload />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/send" 
+            element={
+              <ProtectedRoute>
+                <Send />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/sign/:id" 
+            element={
+              <ProtectedRoute>
+                <Sign />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/agreement/:id" 
+            element={
+              <ProtectedRoute>
+                <AgreementDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/drafts" 
+            element={
+              <ProtectedRoute>
+                <Drafts />
+              </ProtectedRoute>
+            } 
+          />
+          {/* <Route path="/" element={<Navigate to="/login" replace />} /> */}
+        </Routes>
+      </main>
+    </div>
+  );
+};
+
+function App() {
+  return (
     <UserProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Navbar />
-          <main>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/callback" element={<Callback />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/upload" 
-                element={
-                  <ProtectedRoute>
-                    <Upload />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/send" 
-                element={
-                  <ProtectedRoute>
-                    <Send />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/sign/:id" 
-                element={
-                  <ProtectedRoute>
-                    <Sign />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/agreement/:id" 
-                element={
-                  <ProtectedRoute>
-                    <AgreementDetails />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/drafts" 
-                element={
-                  <ProtectedRoute>
-                    <Drafts />
-                  </ProtectedRoute>
-                } 
-              />
-              {/* <Route path="/" element={<Navigate to="/login" replace />} /> */}
-            </Routes>
-          </main>
-        </div>
+        <AppContent />
       </Router>
     </UserProvider>
   );
