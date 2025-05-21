@@ -1,54 +1,113 @@
-# React + TypeScript + Vite
+# 📄 SuiSign
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**SuiSign** is a fully decentralized document signing platform leveraging the Sui blockchain and Walrus decentralized storage. It enables users to upload documents, define signers, and collect cryptographically verified signatures, all while ensuring data immutability and transparency.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Features
 
-## Expanding the ESLint configuration
+- **zkLogin Authentication**: Seamless login using Google accounts without compromising decentralization.
+- **Multi-Signature Support**: Collect signatures from multiple parties with on-chain verification.
+- **Immutable Storage**: Store documents permanently using Walrus decentralized storage.
+- **Dynamic Fee Structure**: Flexible payment options where either the sender or signer can cover the agreement fees.
+- **Public Agreement Explorer**: Browse publicly marked agreements for transparency and auditability.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 🛠️ Installation
+
+### Prerequisites
+
+- **Node.js** (v16 or higher)
+- **pnpm** package manager
+- **Sui CLI** installed globally
+
+### Steps
+
+#### 1. Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/suisign.git
+cd suisign
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+#### 2. Install Dependencies
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+pnpm install
 ```
+
+#### 3. Set Up Environment Variables
+
+Create a `.env` file in the root directory and add the following:
+
+```env
+VITE_SUI_NETWORK=testnet
+VITE_PACKAGE_ID=your_package_id
+VITE_MODULE_NAME=your_module_name
+VITE_OBJECT_ID=your_object_id
+```
+
+Replace `your_package_id`, `your_module_name`, and `your_object_id` with the actual values from your smart contract deployment.
+
+## 📦 Deploying Smart Contracts on Sui Testnet
+
+### 1. Install Sui CLI
+Follow the official Sui documentation to install the CLI:
+👉 [Sui CLI Installation Guide](https://docs.sui.io/build/install)
+
+### 2. Create a New Wallet Address
+
+```bash
+sui client new-address ed25519
+```
+
+Save the generated address for future use.
+
+### 3. Request Testnet SUI Tokens
+
+```bash
+curl --location --request POST 'https://faucet.testnet.sui.io/v1/gas' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "FixedAmountRequest": {
+    "recipient": "your_wallet_address"
+  }
+}'
+```
+
+Replace `your_wallet_address` with the one generated above.
+
+### 4. Deploy Your Smart Contract
+
+Navigate to your Move package directory and deploy:
+
+```bash
+sui client publish --gas-budget 20000000
+```
+
+From the output, note:
+- Package ID
+- Module Name
+- Object ID
+
+These are required to configure the frontend.
+
+## 💻 Running the Application
+
+Start the development server:
+
+```bash
+pnpm dev
+```
+
+The application will be accessible at:
+👉 http://localhost:5173
+
+## 📄 License
+
+This project is licensed under the MIT License.
+See the LICENSE file for details.
+
+Feel free to contribute, report issues, or suggest features by creating an issue or pull request!
+
