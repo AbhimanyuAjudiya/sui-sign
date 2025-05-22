@@ -8,8 +8,8 @@ export interface Feature {
 
 export const features: Feature[] = [
   {
-    title: 'Permanent Document Storage',
-    description: 'Store agreements on Walrus decentralized storage, ensuring they are immutable and permanent.',
+    title: 'Decentralized Document Storage',
+    description: 'Store agreements on Walrus decentralized storage, ensuring they are immutable.',
     icon: DatabaseIcon,
   },
   {
