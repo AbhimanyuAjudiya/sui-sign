@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import { setupDebugger } from './utils/debug';
 import { setupSessionMonitoring, touchSession } from './utils/sessionMonitor';
@@ -67,7 +67,7 @@ const AppContent = () => {
       <main>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
+          {/* <Route path="/login" element={<Login />} />
           <Route path="/callback" element={<Callback />} />
           <Route 
             path="/dashboard" 
@@ -124,8 +124,9 @@ const AppContent = () => {
                 <Drafts />
               </ProtectedRoute>
             } 
-          />
-          {/* <Route path="/" element={<Navigate to="/login" replace />} /> */}
+          /> */}
+          {/* Catch-all route - redirect any unmatched routes to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>

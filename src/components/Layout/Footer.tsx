@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
               <a href="https://x.com/abhiii_aj/" target='_blank' className="text-neutral-400 hover:text-white">
                 <Twitter size={20} />
               </a>
-              <a href="https://github.com/AbhimanyuAjudiya/sui-sign" target='_blank' className="text-neutral-400 hover:text-white">
+              <a href="https://github.com/AbhimanyuAjudiya/" target='_blank' className="text-neutral-400 hover:text-white">
                 <Github size={20} />
               </a>
               <a href="https://www.linkedin.com/in/abhimanyu-ajudiya/"target='_blank'  className="text-neutral-400 hover:text-white">

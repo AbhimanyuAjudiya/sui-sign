@@ -21,10 +21,12 @@ const Hero: React.FC = () => {
             Enterprise-grade document signing without centralized intermediaries.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/login">
+            {/* <Link to="/login">
               <Button size="lg">Start Signing Securely</Button>
+            </Link> */}
+            <Link to="https://www.youtube.com/watch?v=hLP0cuYyHx8" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="lg">Watch Demo</Button>
             </Link>
-            <Button variant="outline" size="lg">Schedule Demo</Button>
           </div>
           <div className="mt-12 flex justify-center space-x-8">
             <div className="text-center">
