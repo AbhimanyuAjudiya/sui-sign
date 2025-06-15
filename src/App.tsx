@@ -67,7 +67,7 @@ const AppContent = () => {
       <main>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
+          {/* <Route path="/login" element={<Login />} />
           <Route path="/callback" element={<Callback />} />
           <Route 
             path="/dashboard" 
@@ -124,9 +124,9 @@ const AppContent = () => {
                 <Drafts />
               </ProtectedRoute>
             } 
-          />
+          /> */}
           {/* Catch-all route - redirect any unmatched routes to home */}
-          {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
