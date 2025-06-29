@@ -4,6 +4,7 @@ import { FileSignature, Home, LogOut, User } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { motion } from 'framer-motion';
 import AddressDisplay from '../common/AddressDisplay';
+import Avatar from '../ui/Avatar';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useUser();
@@ -65,10 +66,11 @@ const Navbar: React.FC = () => {
             </div>
             
             <Link to="/profile" className="flex items-center mr-4">
-              <img
-                src={user.profilePic || 'https://i.pravatar.cc/150?u=anonymous'}
-                alt="Profile"
-                className="h-8 w-8 rounded-full mr-2"
+              <Avatar
+                src={user.profilePic}
+                alt={`Profile picture for ${user.email || 'user'}`}
+                size="sm"
+                className="mr-2"
               />
               {user.address && (
                 <AddressDisplay 

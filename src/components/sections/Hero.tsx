@@ -2,7 +2,6 @@ import React from 'react';
 import Section from '../ui/Section';
 import Button from '../ui/LButton';
 import { ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const Hero: React.FC = () => {
   return (
@@ -24,9 +23,15 @@ const Hero: React.FC = () => {
             {/* <Link to="/login">
               <Button size="lg">Start Signing Securely</Button>
             </Link> */}
-            <Link to="https://www.youtube.com/watch?v=hLP0cuYyHx8" target="_blank" rel="noopener noreferrer">
+            <a 
+              href="https://www.youtube.com/watch?v=hLP0cuYyHx8" 
+              target="_blank" 
+              rel="noopener noreferrer nofollow"
+              className="inline-block"
+              aria-label="Watch demonstration video on YouTube"
+            >
               <Button variant="outline" size="lg">Watch Demo</Button>
-            </Link>
+            </a>
           </div>
           <div className="mt-12 flex justify-center space-x-8">
             <div className="text-center">

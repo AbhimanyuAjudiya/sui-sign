@@ -4,6 +4,7 @@ import AddressDisplay from '../components/common/AddressDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import Button from '../components/ui/Button';
 import { Shield, User as UserIcon, ExternalLink } from 'lucide-react';
+import Avatar from '../components/ui/Avatar';
 
 /**
  * User profile page displaying user details and Sui blockchain information
@@ -63,10 +64,10 @@ const Profile: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-center mb-6">
-                <img
-                  src={user.profilePic || 'https://i.pravatar.cc/150?u=anonymous'}
-                  alt="Profile Picture"
-                  className="h-24 w-24 rounded-full border-2 border-primary-600"
+                <Avatar
+                  src={user.profilePic}
+                  alt={`Profile picture for ${user.email || 'user'}`}
+                  size="lg"
                 />
               </div>
               
@@ -141,7 +142,7 @@ const Profile: React.FC = () => {
                 {(networkLabel === 'Sui Testnet' || networkLabel === 'Sui Devnet') && (
                   <div className="mt-4">
                     <Button
-                      onClick={() => window.open(`https://faucet.sui.io/?address=${user.address}`, '_blank')}
+                      onClick={() => window.open(`https://faucet.sui.io/?address=${user.address}`, '_blank', 'noopener,noreferrer')}
                       fullWidth
                       icon={<ExternalLink className="h-4 w-4 mr-2" />}
                     >

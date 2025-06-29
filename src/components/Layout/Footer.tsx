@@ -16,13 +16,13 @@ const Footer: React.FC = () => {
               Decentralized document signing for the Web3 era.
             </p>
             <div className="flex space-x-4">
-              <a href="https://x.com/abhiii_aj/" target='_blank' className="text-neutral-400 hover:text-white">
+              <a href="https://x.com/abhiii_aj/" target="_blank" rel="noopener noreferrer nofollow" className="text-neutral-400 hover:text-white" aria-label="Follow on Twitter/X">
                 <Twitter size={20} />
               </a>
-              <a href="https://github.com/AbhimanyuAjudiya/" target='_blank' className="text-neutral-400 hover:text-white">
+              <a href="https://github.com/AbhimanyuAjudiya/" target="_blank" rel="noopener noreferrer nofollow" className="text-neutral-400 hover:text-white" aria-label="View on GitHub">
                 <Github size={20} />
               </a>
-              <a href="https://www.linkedin.com/in/abhimanyu-ajudiya/"target='_blank'  className="text-neutral-400 hover:text-white">
+              <a href="https://www.linkedin.com/in/abhimanyu-ajudiya/" target="_blank" rel="noopener noreferrer nofollow" className="text-neutral-400 hover:text-white" aria-label="Connect on LinkedIn">
                 <Linkedin size={20} />
               </a>
             </div>

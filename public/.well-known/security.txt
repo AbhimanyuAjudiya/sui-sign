@@ -1,0 +1,10 @@
+Contact: https://github.com/AbhimanyuAjudiya/sui-sign/security/advisories/new
+Preferred-Languages: en
+Canonical: https://yourdomain.com/.well-known/security.txt
+Policy: https://github.com/AbhimanyuAjudiya/sui-sign/blob/main/SECURITY.md
+Acknowledgments: https://github.com/AbhimanyuAjudiya/sui-sign#acknowledgments
+Hiring: https://github.com/AbhimanyuAjudiya
+
+# This is a security.txt file for responsible disclosure of security vulnerabilities.
+# Please report security issues through GitHub Security Advisories.
+# Do not report security vulnerabilities through public GitHub issues.

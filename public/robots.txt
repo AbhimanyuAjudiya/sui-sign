@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_redirects
+Disallow: /vercel.json
+
+# Security - prevent crawling of sensitive files
+Disallow: /*.env*
+Disallow: /*.config.*
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /.git/
+
+# Sitemap (update with your actual domain)
+# Sitemap: https://yourdomain.com/sitemap.xml

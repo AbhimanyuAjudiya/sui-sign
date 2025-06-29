@@ -285,7 +285,11 @@ const Sign: React.FC = () => {
                   file={pdfUrl}
                   onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                   className="border rounded-lg overflow-hidden"
-                  options={{ cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/', cMapPacked: true }}
+                  options={{ 
+                    cMapUrl: '/cmaps/',
+                    cMapPacked: true,
+                    standardFontDataUrl: '/standard_fonts/'
+                  }}
                 >
                   <Page
                     pageNumber={currentPage}
