@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, Check, XCircle, Download } from 'lucide-react';
-import { Document, Page, pdfjs } from 'react-pdf';
 import PageContainer from '../components/Layout/PageContainer';
 import Button from '../components/ui/Button';
 import SignatureCanvas from '../components/ui/SignatureCanvas';
@@ -10,8 +9,6 @@ import FileUpload from '../components/ui/FileUpload';
 import { Agreement } from '../types';
 import { useUser } from '../context/UserContext';
 import { fetchAgreementById, signAgreement, getAgreementFileDataUrl } from '../utils/suiClient';
-
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const Sign: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,8 +20,6 @@ const Sign: React.FC = () => {
   const [isSigning, setIsSigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signature, setSignature] = useState('');
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -277,71 +272,53 @@ const Sign: React.FC = () => {
             ) : pdfError ? (
               <div className="flex flex-col items-center justify-center h-64 text-error-600">
                 <XCircle className="h-10 w-10 mb-2" />
-                <p>{pdfError}</p>
+                <p className="text-red-600 mb-4">{pdfError}</p>
+                <Button onClick={() => window.location.reload()} variant="outline">
+                  Retry
+                </Button>
               </div>
             ) : pdfUrl ? (
               <div className="relative">
-                <Document
-                  file={pdfUrl}
-                  onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                  className="border rounded-lg overflow-hidden"
-                  options={{ 
-                    cMapUrl: '/cmaps/',
-                    cMapPacked: true,
-                    standardFontDataUrl: '/standard_fonts/'
-                  }}
-                >
-                  <Page
-                    pageNumber={currentPage}
-                    width={800}
-                    className="mx-auto"
-                  />
-                  {/* Overlay signature(s) on all user areas for this page */}
-                  {userAreas.filter(area => area.page === currentPage).map((area, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        position: 'absolute',
-                        left: area.x, top: area.y, width: area.width, height: area.height,
-                        pointerEvents: 'none',
-                        zIndex: 10,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      {signatureType === 'text' && signatureText ? (
-                        <span className="font-signature text-xl text-black bg-transparent">{signatureText}</span>
-                      ) : signatureType === 'upload' && signatureImage ? (
-                        <img src={signatureImage} alt="Signature" className="max-h-full max-w-full object-contain bg-transparent" />
-                      ) : signatureType === 'draw' && signature ? (
-                        <img src={signature} alt="Signature" className="max-h-full max-w-full object-contain bg-transparent" />
-                      ) : null}
-                    </div>
-                  ))}
-                </Document>
-                {/* Page navigation */}
-                {numPages && numPages > 1 && (
-                  <div className="flex justify-center mt-4 space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm text-gray-600 py-2">
-                      Page {currentPage} of {numPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
-                      disabled={currentPage === numPages}
-                    >
-                      Next
-                    </Button>
+                {/* Secure PDF Display */}
+                <div className="border rounded-lg overflow-hidden bg-gray-50 p-8 text-center min-h-96">
+                  <div className="mb-4">
+                    <FileText className="mx-auto h-16 w-16 text-gray-400" />
                   </div>
-                )}
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Secure Document View</h3>
+                  <p className="text-gray-600 mb-4">
+                    For security reasons, the PDF content is not displayed inline. Please download the document to view its contents and verify the signature areas.
+                  </p>
+                  <div className="flex justify-center space-x-4 mb-6">
+                    <Button 
+                      onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
+                      variant="outline"
+                    >
+                      Open in New Tab
+                    </Button>
+                    <a 
+                      href={pdfUrl} 
+                      download
+                      className="inline-flex"
+                    >
+                      <Button>Download PDF</Button>
+                    </a>
+                  </div>
+                  
+                  {/* Signature Areas Info */}
+                  {userAreas.length > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Signature Areas</h4>
+                      <p className="text-blue-800 text-sm mb-2">
+                        This document has {userAreas.length} signature area{userAreas.length > 1 ? 's' : ''} designated for you to sign.
+                      </p>
+                      {userAreas.map((area, idx) => (
+                        <div key={idx} className="text-sm text-blue-700">
+                          Area {idx + 1}: Page {area.page || 1}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">

@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Search, Send as SendIcon, Upload, FileText, X, Trash2, UserPlus, UserCircle2 } from 'lucide-react';
-import { pdfjs } from 'react-pdf';
 import { resolveDocumentUrl, isWalrusBlob } from '../utils/resolveWalrusUrl';
 import PageContainer from '../components/Layout/PageContainer';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import TextArea from '../components/ui/TextArea';
 import FileUpload from '../components/ui/FileUpload';
-import SignatureAreaSelector from '../components/ui/SignatureAreaSelector';
+import SignatureAreaSelector from '../components/ui/SimpleSignatureAreaSelector';
 import { Agreement, AgreementStatus } from '../types';
 import { useUser } from '../context/UserContext';
 import { fetchAgreementsForUser, sendAgreement, createAgreement, uploadFileToWalrus } from '../utils/suiClient';
 import { resolveGmailToSuiAddress } from '../utils/zkLogin';
-
-// Initialize PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 // Define the interface for a signer
 interface Signer {

@@ -60,13 +60,37 @@ const Avatar: React.FC<AvatarProps> = ({
       onError={(e) => {
         // Replace with default avatar if image fails to load
         const target = e.target as HTMLImageElement;
-        target.style.display = 'none';
-        target.parentNode?.appendChild(
-          Object.assign(document.createElement('div'), {
-            className: `${sizeClasses[size]} bg-gray-500 rounded-full flex items-center justify-center text-white ${className}`,
-            innerHTML: `<svg width="${iconSizes[size]}" height="${iconSizes[size]}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
-          })
-        );
+        const parent = target.parentNode;
+        if (parent) {
+          target.style.display = 'none';
+          // Create a safe fallback div instead of using innerHTML
+          const fallbackDiv = document.createElement('div');
+          fallbackDiv.className = `${sizeClasses[size]} bg-gray-500 rounded-full flex items-center justify-center text-white ${className}`;
+          
+          // Create SVG element safely
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('width', iconSizes[size].toString());
+          svg.setAttribute('height', iconSizes[size].toString());
+          svg.setAttribute('viewBox', '0 0 24 24');
+          svg.setAttribute('fill', 'none');
+          svg.setAttribute('stroke', 'currentColor');
+          svg.setAttribute('stroke-width', '2');
+          svg.setAttribute('stroke-linecap', 'round');
+          svg.setAttribute('stroke-linejoin', 'round');
+          
+          const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path1.setAttribute('d', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2');
+          
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', '12');
+          circle.setAttribute('cy', '7');
+          circle.setAttribute('r', '4');
+          
+          svg.appendChild(path1);
+          svg.appendChild(circle);
+          fallbackDiv.appendChild(svg);
+          parent.appendChild(fallbackDiv);
+        }
       }}
     />
   );

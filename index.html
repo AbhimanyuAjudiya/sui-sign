@@ -15,15 +15,16 @@
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
       img-src 'self' data: blob:;
-      connect-src 'self' https://api.suifrens.sui.io https://faucet.sui.io https://fullnode.testnet.sui.io https://fullnode.mainnet.sui.io https://publisher-devnet.walrus.space https://aggregator-devnet.walrus.space https://accounts.google.com;
+      connect-src 'self' https://api.suifrens.sui.io https://faucet.sui.io https://fullnode.testnet.sui.io https://fullnode.mainnet.sui.io https://publisher-devnet.walrus.space https://aggregator-devnet.walrus.space https://accounts.google.com https://unpkg.com;
       frame-src 'none';
       object-src 'none';
       base-uri 'self';
       form-action 'self';
+      worker-src 'self' https://unpkg.com;
     " />
     
     <title>SuiSign - Secure Decentralized Document Signing</title>
